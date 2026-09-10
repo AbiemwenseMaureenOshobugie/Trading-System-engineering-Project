@@ -37,10 +37,10 @@ class MarketCandle:
     source: str = ""
 
     def __post_init__(self) -> None:
-        if self.timestamp_open >= self.timestamp_close:
-            raise ValueError("timestamp_open must be earlier than timestamp_close")
         if self.timestamp_open.tzinfo is None or self.timestamp_close.tzinfo is None:
             raise ValueError("candle timestamps must be timezone-aware")
+        if self.timestamp_open >= self.timestamp_close:
+            raise ValueError("timestamp_open must be earlier than timestamp_close")
         if self.high < max(self.open, self.close):
             raise ValueError("high must be greater than or equal to open and close")
         if self.low > min(self.open, self.close):
