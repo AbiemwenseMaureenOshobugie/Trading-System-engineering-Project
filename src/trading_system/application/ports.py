@@ -7,7 +7,7 @@ not contain strategy rules, risk formulas, governance rules, or broker logic.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Protocol, Sequence
+from typing import Protocol, Sequence, runtime_checkable
 
 from trading_system.domain import (
     ConfirmationSequence,
@@ -22,6 +22,7 @@ from trading_system.domain import (
 )
 
 
+@runtime_checkable
 class MarketDataPort(Protocol):
     """Read canonical, validated market candles from an external data source.
 
@@ -39,6 +40,7 @@ class MarketDataPort(Protocol):
     ) -> Sequence[MarketCandle]: ...
 
 
+@runtime_checkable
 class H1MarketStructurePort(Protocol):
     """Evaluate H1 market structure as of an explicit completed-candle cutoff."""
 
@@ -50,6 +52,7 @@ class H1MarketStructurePort(Protocol):
     ) -> MarketStructureState: ...
 
 
+@runtime_checkable
 class KeyLevelEnginePort(Protocol):
     """Detect approved key levels from validated strategy inputs."""
 
@@ -61,6 +64,7 @@ class KeyLevelEnginePort(Protocol):
     ) -> Sequence[KeyLevel]: ...
 
 
+@runtime_checkable
 class ConfirmationEnginePort(Protocol):
     """Evaluate the approved M15 confirmation processes."""
 
@@ -73,6 +77,7 @@ class ConfirmationEnginePort(Protocol):
     ) -> Sequence[ConfirmationSequence]: ...
 
 
+@runtime_checkable
 class SetupClassifierPort(Protocol):
     """Translate qualifying confirmation sequences into candidates."""
 
@@ -82,18 +87,21 @@ class SetupClassifierPort(Protocol):
     ) -> Sequence[DecisionCandidate]: ...
 
 
+@runtime_checkable
 class RiskEnginePort(Protocol):
     """Assess a candidate without owning strategy qualification."""
 
     def assess(self, candidate: DecisionCandidate) -> RiskResult: ...
 
 
+@runtime_checkable
 class GovernanceEnginePort(Protocol):
     """Apply hard operational permissions to a decision candidate."""
 
     def authorize(self, candidate: DecisionCandidate) -> GovernanceResult: ...
 
 
+@runtime_checkable
 class ExecutionPort(Protocol):
     """Submit only candidates with authorized Risk and Governance results.
 
@@ -111,6 +119,7 @@ class ExecutionPort(Protocol):
     ) -> ExecutionRecord: ...
 
 
+@runtime_checkable
 class AuditPort(Protocol):
     """Record material boundary events without owning business rules."""
 
