@@ -40,9 +40,9 @@ The system is not designed as a generic buy/sell predictor. Deterministic strate
 
 **Milestone:** MS-0.2 — System Architecture & Technical Design
 
-**Current submilestone:** MS-0.2B — Python Module/Package Structure & Project Skeleton
+**Current submilestone:** MS-0.2C — Python Domain Model & Canonical Data Contracts
 
-MS-0.2A established the component architecture and data/decision boundaries. MS-0.2B establishes the importable Python package structure without implementing trading behavior.
+MS-0.2A established the component architecture and data/decision boundaries. MS-0.2B established the importable Python package structure. MS-0.2C establishes typed, immutable domain contracts without implementing trading behavior.
 
 ## Planned evolution
 
@@ -68,6 +68,8 @@ Project documentation is treated as a first-class engineering artifact. Architec
 ├── src/
 │   └── trading_system/
 │       ├── domain/
+│       │   ├── enums.py
+│       │   └── models.py
 │       ├── data/
 │       ├── features/
 │       ├── strategy/
@@ -93,4 +95,4 @@ Project documentation is treated as a first-class engineering artifact. Architec
 
 The smallest working system is preferred over premature complexity. New modules, indicators, AI models, data sources, execution mechanisms, and risk rules require explicit methodological or engineering justification.
 
-MS-0.2B creates the package boundaries only. Domain behavior and deterministic trading rules will be introduced incrementally in later milestones.
+MS-0.2C defines the canonical domain representation only. Deterministic trading behavior will be introduced incrementally in later milestones.
