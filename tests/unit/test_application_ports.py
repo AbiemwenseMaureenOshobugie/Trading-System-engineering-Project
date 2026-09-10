@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from trading_system.application import (
     AuditPort,
     ConfirmationEnginePort,
-    DecisionEnginePort,
     ExecutionPort,
     GovernanceEnginePort,
     H1MarketStructurePort,
@@ -14,12 +14,12 @@ from trading_system.application import (
 )
 from trading_system.domain import (
     GovernanceResult,
+    GovernanceStatus,
     MarketCandle,
     MarketStructureState,
     Regime,
     RiskResult,
     RiskStatus,
-    GovernanceStatus,
     Timeframe,
 )
 
@@ -31,10 +31,10 @@ def candle() -> MarketCandle:
         timeframe=Timeframe.H1,
         timestamp_open=start,
         timestamp_close=start.replace(hour=11),
-        open=1.1,
-        high=1.11,
-        low=1.09,
-        close=1.105,
+        open=Decimal("1.10"),
+        high=Decimal("1.11"),
+        low=Decimal("1.09"),
+        close=Decimal("1.105"),
         source="test",
     )
 
@@ -45,11 +45,15 @@ class DataAdapter:
 
 
 class StructureEngine:
-    def evaluate(self, candles):
+    def evaluate(self, *, candles, evaluation_cutoff):
         return MarketStructureState(
             regime=Regime.UNCLEAR,
             structure_version="0.1.0",
-            evaluated_at=candles[-1].timestamp_close,
+            meaningful_highs=(),
+            meaningful_lows=(),
+            controlling_level=None,
+            structural_events=(),
+            evaluated_at=evaluation_cutoff,
         )
 
 
@@ -72,6 +76,13 @@ class Risk:
     def assess(self, candidate):
         return RiskResult(
             decision_id=candidate.decision_id,
+            requested_risk=None,
+            approved_risk=None,
+            position_size=None,
+            entry_assumption=None,
+            stop_distance=None,
+            target_distance=None,
+            risk_reward=None,
             status=RiskStatus.RISK_REJECTED,
             reason_codes=("TEST",),
         )
@@ -86,12 +97,8 @@ class Governance:
             daily_loss_count=0,
             checks=("TEST",),
             status=GovernanceStatus.GOVERNANCE_AUTHORIZED,
+            reason_codes=(),
         )
-
-
-class Decision:
-    def evaluate(self, *, candidate, risk, governance):
-        return "BLOCKED"
 
 
 class Execution:
@@ -113,10 +120,18 @@ def test_ports_are_runtime_compatible_with_structural_implementations():
         (SetupClassifierPort, Classifier()),
         (RiskEnginePort, Risk()),
         (GovernanceEnginePort, Governance()),
-        (DecisionEnginePort, Decision()),
         (ExecutionPort, Execution()),
         (AuditPort, Audit()),
     ]
 
     for protocol, implementation in implementations:
         assert isinstance(implementation, protocol)
+
+
+def test_h1_port_requires_an_explicit_evaluation_cutoff():
+    engine = StructureEngine()
+    cutoff = candle().timestamp_close
+
+    state = engine.evaluate(candles=[candle()], evaluation_cutoff=cutoff)
+
+    assert state.evaluated_at == cutoff
