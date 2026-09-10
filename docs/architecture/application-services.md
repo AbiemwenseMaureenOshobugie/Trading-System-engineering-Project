@@ -12,9 +12,27 @@ This milestone does **not** implement any trading rule.
 
 ### Data-facing ports
 
-`MarketDataPort` is the application boundary for obtaining market candles. External providers and MT5 implementations belong behind this boundary.
+`MarketDataPort` is the application boundary for obtaining **canonical** market candles. External providers and MT5 implementations belong behind this boundary.
 
-Validation and normalization remain data-layer responsibilities. Their concrete contracts will be introduced when their canonical result semantics are specified; MS-0.2D does not invent additional domain result types for them.
+The required data flow is:
+
+```text
+External/provider raw records
+        ↓
+Provider/broker adapter
+        ↓
+Validation
+        ↓
+Normalization
+        ↓
+Canonical MarketCandle
+        ↓
+Application / strategy
+```
+
+`MarketDataPort` must not expose provider-specific records. Validation and normalization remain data-layer responsibilities. Their concrete contracts will be introduced when their canonical result semantics are specified; MS-0.2D does not invent additional domain result types for them.
+
+A strategy engine must never consume raw or merely provider-shaped market data.
 
 ### Strategy ports
 
@@ -27,19 +45,22 @@ The strategy layer is split into the methodology-specific engines already establ
 
 These ports accept canonical domain models and return canonical domain models. They do not place orders or authorize risk.
 
+`H1MarketStructurePort` requires an explicit `evaluation_cutoff`. The result represents structure **as of that cutoff**, using only completed candles whose close is at or before the boundary. The implementation must reject or otherwise prevent future candles from influencing the result. This boundary exists to preserve H1 close semantics and prevent look-ahead bias during live evaluation, replay, and backtesting.
+
 ### Control ports
 
 - `RiskEnginePort` — independent risk assessment.
 - `GovernanceEnginePort` — independent governance authorization.
-- `DecisionEnginePort` — combines candidate, risk, and governance results at the final decision boundary.
 
-The exact domain type for the final decision outcome is deliberately deferred. The current port returns a string only as a temporary architectural placeholder; it must not be treated as a frozen domain contract or used to encode new decision states.
+The final typed decision outcome is deliberately deferred. No temporary `str`-based decision contract is exposed by the application port set. The future decision interface will be introduced only when its canonical domain semantics are formally specified.
 
 ### Execution port
 
 `ExecutionPort` is the only application boundary through which an authorized decision may reach an external execution adapter.
 
-The interface receives the candidate together with the risk and governance results so the execution boundary can verify that the required control results are present. A future implementation must reject anything that has not been authorized; this milestone does not implement that check.
+The interface receives the candidate together with the Risk and Governance results so the concrete execution boundary can verify that both control results are present and authorized before submission. A rejected or blocked control result must never be submitted to a broker.
+
+The port does not own strategy rules and must not reinterpret or silently modify the candidate's immutable signal timestamp or signal entry price. Broker submission and broker fill remain separate execution events.
 
 ### Audit port
 
@@ -54,7 +75,7 @@ External Systems
       ↓
 Adapters
       ↓
-Market Data / Data Layer
+Validation / Normalization
       ↓
 Canonical Domain Models
       ↓
@@ -64,7 +85,7 @@ Setup Classification
       ↓
 Risk + Governance
       ↓
-Decision
+Decision (when formally specified)
       ↓
 Execution Port
       ↓
@@ -77,7 +98,7 @@ The important rule is that dependencies point **toward abstractions and domain c
 
 | Boundary | Owns | Must not own |
 |---|---|---|
-| Market data | obtaining external candles | trading methodology |
+| Market data | obtaining canonical candles through the data pipeline | trading methodology |
 | Data validation/normalization | data integrity and canonical representation | strategy qualification |
 | Market structure | H1 regime classification | order execution, risk authorization |
 | Key levels | approved level detection/state | broker execution |
@@ -85,7 +106,7 @@ The important rule is that dependencies point **toward abstractions and domain c
 | Setup classifier | candidate construction | final permission to trade |
 | Risk | trade risk and geometry | methodology qualification |
 | Governance | hard operational permission | strategy interpretation |
-| Decision | final system outcome | broker-specific mechanics |
+| Decision | final system outcome once formally specified | broker-specific mechanics |
 | Execution | authorized order submission | changing strategy/risk/governance results |
 | Audit | evidence recording | changing authoritative state |
 | Explanation | human-readable interpretation of recorded evidence | changing decisions |
@@ -97,14 +118,16 @@ The important rule is that dependencies point **toward abstractions and domain c
 2. Strategy engines consume domain contracts rather than reaching into other strategy implementations' private state.
 3. Risk does not call strategy engines to decide whether its own controls pass.
 4. Governance does not modify strategy qualification or risk calculations.
-5. Decision logic consumes strategy, risk, and governance outcomes; it does not replace them.
-6. Execution is downstream of risk and governance authorization.
+5. Decision logic, when implemented, consumes strategy, risk, and governance outcomes; it does not replace them.
+6. Execution is downstream of **authorized Risk and Governance results** and must reject anything else at the execution boundary.
 7. Execution must not reinterpret or silently modify the signal's immutable entry price or timestamp.
 8. Audit receives evidence from boundaries but cannot authorize, block, or alter a decision.
 9. Explanation and analytics are downstream consumers and cannot mutate authoritative decision state.
 10. AI/ML components, when introduced, must sit behind explicitly bounded interfaces and cannot bypass deterministic strategy, risk, governance, or execution controls.
 11. Shared domain models remain in `domain`; application ports must not introduce duplicate representations of the same concept.
 12. No interface may silently encode an unresolved methodology decision.
+13. No strategy engine may consume raw external-provider data.
+14. H1 structure evaluation must be bounded by an explicit evaluation cutoff and must not use candles after that boundary.
 
 ## 6. Call-flow boundary
 
@@ -113,9 +136,9 @@ The expected application call flow is:
 ```text
 MarketDataPort
     ↓
-validated/normalized market data
+validated/normalized canonical market data
     ↓
-H1MarketStructurePort
+H1MarketStructurePort(candles, evaluation_cutoff)
     ↓
 KeyLevelEnginePort
     ↓
@@ -127,9 +150,9 @@ DecisionCandidate
     ├──────────────→ RiskEnginePort
     └──────────────→ GovernanceEnginePort
                          ↓
-                  DecisionEnginePort
+             Decision layer (deferred contract)
                          ↓
-                 authorized outcome
+                  authorized outcome
                          ↓
                    ExecutionPort
 ```
@@ -143,7 +166,7 @@ The following are intentionally not fully specified in MS-0.2D because the corre
 - feature-engineering result interface;
 - concrete data-validation result object;
 - concrete normalization result beyond canonical candles;
-- final typed decision outcome;
+- final typed decision outcome and decision port;
 - explanation request/result contract;
 - analytics/backtest service contract;
 - concrete broker/MT5 adapter contract;
@@ -153,7 +176,9 @@ Deferral is deliberate. The project should not manufacture abstractions before t
 
 ## 8. Testing boundary
 
-MS-0.2D tests should verify that the ports are importable and structurally usable by compatible implementations. Behavioral strategy tests belong to later milestones when the corresponding engines are implemented.
+MS-0.2D tests verify that the ports are importable and structurally usable by compatible implementations, and that the H1 boundary requires an explicit evaluation cutoff. Behavioral strategy tests belong to later milestones when the corresponding engines are implemented.
+
+Execution implementations must additionally enforce authorized Risk and Governance results before any broker submission. Signal/execution separation is a domain invariant and should be protected by later architecture/integration tests.
 
 ## 9. Milestone exit condition
 
@@ -161,6 +186,8 @@ MS-0.2D is complete when:
 
 - application ports are defined;
 - dependency direction is documented;
+- canonical-data boundaries are explicit;
+- H1 evaluation has an explicit no-lookahead boundary;
 - authority boundaries are explicit;
 - execution is separated from strategy, risk, and governance;
 - deferred contracts are recorded rather than invented;
