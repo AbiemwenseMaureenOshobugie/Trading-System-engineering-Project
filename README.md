@@ -40,9 +40,9 @@ The system is not designed as a generic buy/sell predictor. Deterministic strate
 
 **Milestone:** MS-0.2 — System Architecture & Technical Design
 
-**Current submilestone:** MS-0.2A — Component Architecture
+**Current submilestone:** MS-0.2B — Python Module/Package Structure & Project Skeleton
 
-The Strategy Specification v0.1.0 has been substantially frozen. Remaining implementation-level items are tracked explicitly rather than invented during coding.
+MS-0.2A established the component architecture and data/decision boundaries. MS-0.2B establishes the importable Python package structure without implementing trading behavior.
 
 ## Planned evolution
 
@@ -64,17 +64,33 @@ Project documentation is treated as a first-class engineering artifact. Architec
 ```text
 .
 ├── README.md
-├── docs/
-│   ├── architecture/
-│   │   ├── adr/
-│   │   ├── component-architecture.md
-│   │   ├── data-contracts.md
-│   │   ├── decision-state-machine.md
-│   │   └── system-overview.md
-│   └── ...
-└── ...
+├── pyproject.toml
+├── src/
+│   └── trading_system/
+│       ├── domain/
+│       ├── data/
+│       ├── features/
+│       ├── strategy/
+│       │   ├── market_structure/
+│       │   ├── key_levels/
+│       │   └── confirmation/
+│       ├── risk/
+│       ├── governance/
+│       ├── decision/
+│       ├── execution/
+│       ├── audit/
+│       ├── analytics/
+│       ├── explanation/
+│       └── adapters/
+├── tests/
+│   ├── unit/
+│   └── integration/
+└── docs/
+    └── architecture/
 ```
 
 ## Development discipline
 
 The smallest working system is preferred over premature complexity. New modules, indicators, AI models, data sources, execution mechanisms, and risk rules require explicit methodological or engineering justification.
+
+MS-0.2B creates the package boundaries only. Domain behavior and deterministic trading rules will be introduced incrementally in later milestones.
