@@ -1,0 +1,167 @@
+# Application and Service Interfaces
+
+## 1. Purpose
+
+MS-0.2D defines the application-layer dependency boundaries for the system. The objective is to make the direction of control explicit before implementing deterministic trading behavior.
+
+The interfaces in `src/trading_system/application/ports.py` are Python `Protocol` contracts. They describe capabilities required by the application layer without coupling it to MT5, a database, a particular data provider, or a concrete strategy implementation.
+
+This milestone does **not** implement any trading rule.
+
+## 2. Port categories
+
+### Data-facing ports
+
+`MarketDataPort` is the application boundary for obtaining market candles. External providers and MT5 implementations belong behind this boundary.
+
+Validation and normalization remain data-layer responsibilities. Their concrete contracts will be introduced when their canonical result semantics are specified; MS-0.2D does not invent additional domain result types for them.
+
+### Strategy ports
+
+The strategy layer is split into the methodology-specific engines already established by the architecture:
+
+- `H1MarketStructurePort` — H1 regime and structural state evaluation.
+- `KeyLevelEnginePort` — approved key-level detection and level state.
+- `ConfirmationEnginePort` — CP-1 and CP-2 sequence evaluation.
+- `SetupClassifierPort` — conversion of qualifying confirmations into decision candidates.
+
+These ports accept canonical domain models and return canonical domain models. They do not place orders or authorize risk.
+
+### Control ports
+
+- `RiskEnginePort` — independent risk assessment.
+- `GovernanceEnginePort` — independent governance authorization.
+- `DecisionEnginePort` — combines candidate, risk, and governance results at the final decision boundary.
+
+The exact domain type for the final decision outcome is deliberately deferred. The current port returns a string only as a temporary architectural placeholder; it must not be treated as a frozen domain contract or used to encode new decision states.
+
+### Execution port
+
+`ExecutionPort` is the only application boundary through which an authorized decision may reach an external execution adapter.
+
+The interface receives the candidate together with the risk and governance results so the execution boundary can verify that the required control results are present. A future implementation must reject anything that has not been authorized; this milestone does not implement that check.
+
+### Audit port
+
+`AuditPort` records material events. Audit is a cross-cutting boundary and does not own strategy, risk, governance, or execution authority.
+
+## 3. Dependency direction
+
+The intended dependency direction is:
+
+```text
+External Systems
+      ↓
+Adapters
+      ↓
+Market Data / Data Layer
+      ↓
+Canonical Domain Models
+      ↓
+Strategy Ports / Implementations
+      ↓
+Setup Classification
+      ↓
+Risk + Governance
+      ↓
+Decision
+      ↓
+Execution Port
+      ↓
+Broker / MT5
+```
+
+The important rule is that dependencies point **toward abstractions and domain contracts**, not toward concrete external systems.
+
+## 4. Authority boundaries
+
+| Boundary | Owns | Must not own |
+|---|---|---|
+| Market data | obtaining external candles | trading methodology |
+| Data validation/normalization | data integrity and canonical representation | strategy qualification |
+| Market structure | H1 regime classification | order execution, risk authorization |
+| Key levels | approved level detection/state | broker execution |
+| Confirmation | CP-1/CP-2 qualification | risk authorization |
+| Setup classifier | candidate construction | final permission to trade |
+| Risk | trade risk and geometry | methodology qualification |
+| Governance | hard operational permission | strategy interpretation |
+| Decision | final system outcome | broker-specific mechanics |
+| Execution | authorized order submission | changing strategy/risk/governance results |
+| Audit | evidence recording | changing authoritative state |
+| Explanation | human-readable interpretation of recorded evidence | changing decisions |
+| Analytics | replay/performance analysis | live decision mutation |
+
+## 5. Dependency rules
+
+1. Concrete adapters implement ports; strategy code does not depend directly on provider or broker SDKs.
+2. Strategy engines consume domain contracts rather than reaching into other strategy implementations' private state.
+3. Risk does not call strategy engines to decide whether its own controls pass.
+4. Governance does not modify strategy qualification or risk calculations.
+5. Decision logic consumes strategy, risk, and governance outcomes; it does not replace them.
+6. Execution is downstream of risk and governance authorization.
+7. Execution must not reinterpret or silently modify the signal's immutable entry price or timestamp.
+8. Audit receives evidence from boundaries but cannot authorize, block, or alter a decision.
+9. Explanation and analytics are downstream consumers and cannot mutate authoritative decision state.
+10. AI/ML components, when introduced, must sit behind explicitly bounded interfaces and cannot bypass deterministic strategy, risk, governance, or execution controls.
+11. Shared domain models remain in `domain`; application ports must not introduce duplicate representations of the same concept.
+12. No interface may silently encode an unresolved methodology decision.
+
+## 6. Call-flow boundary
+
+The expected application call flow is:
+
+```text
+MarketDataPort
+    ↓
+validated/normalized market data
+    ↓
+H1MarketStructurePort
+    ↓
+KeyLevelEnginePort
+    ↓
+ConfirmationEnginePort
+    ↓
+SetupClassifierPort
+    ↓
+DecisionCandidate
+    ├──────────────→ RiskEnginePort
+    └──────────────→ GovernanceEnginePort
+                         ↓
+                  DecisionEnginePort
+                         ↓
+                 authorized outcome
+                         ↓
+                   ExecutionPort
+```
+
+Audit recording is attached to each material boundary rather than inserted as a source of business authority.
+
+## 7. Explicitly deferred interfaces
+
+The following are intentionally not fully specified in MS-0.2D because the corresponding canonical contracts or semantics are not yet frozen:
+
+- feature-engineering result interface;
+- concrete data-validation result object;
+- concrete normalization result beyond canonical candles;
+- final typed decision outcome;
+- explanation request/result contract;
+- analytics/backtest service contract;
+- concrete broker/MT5 adapter contract;
+- persistence/repository interfaces.
+
+Deferral is deliberate. The project should not manufacture abstractions before their semantics are needed.
+
+## 8. Testing boundary
+
+MS-0.2D tests should verify that the ports are importable and structurally usable by compatible implementations. Behavioral strategy tests belong to later milestones when the corresponding engines are implemented.
+
+## 9. Milestone exit condition
+
+MS-0.2D is complete when:
+
+- application ports are defined;
+- dependency direction is documented;
+- authority boundaries are explicit;
+- execution is separated from strategy, risk, and governance;
+- deferred contracts are recorded rather than invented;
+- no trading behavior is introduced by the interface layer.

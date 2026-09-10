@@ -40,9 +40,9 @@ The system is not designed as a generic buy/sell predictor. Deterministic strate
 
 **Milestone:** MS-0.2 — System Architecture & Technical Design
 
-**Current submilestone:** MS-0.2C — Python Domain Model & Canonical Data Contracts
+**Current submilestone:** MS-0.2D — Application/Service Interfaces & Dependency Boundaries
 
-MS-0.2A established the component architecture and data/decision boundaries. MS-0.2B established the importable Python package structure. MS-0.2C establishes typed, immutable domain contracts without implementing trading behavior.
+MS-0.2A established the component architecture and data/decision boundaries. MS-0.2B established the importable Python package structure. MS-0.2C established typed, immutable domain contracts without implementing trading behavior. MS-0.2D defines the application-layer ports, authority boundaries, dependency direction, and intentionally deferred contracts.
 
 ## Planned evolution
 
@@ -67,6 +67,9 @@ Project documentation is treated as a first-class engineering artifact. Architec
 ├── pyproject.toml
 ├── src/
 │   └── trading_system/
+│       ├── application/
+│       │   ├── __init__.py
+│       │   └── ports.py
 │       ├── domain/
 │       │   ├── enums.py
 │       │   └── models.py
@@ -86,13 +89,17 @@ Project documentation is treated as a first-class engineering artifact. Architec
 │       └── adapters/
 ├── tests/
 │   ├── unit/
+│   │   ├── test_domain_models.py
+│   │   └── test_application_ports.py
 │   └── integration/
 └── docs/
     └── architecture/
+        ├── application-services.md
+        └── ...
 ```
 
 ## Development discipline
 
 The smallest working system is preferred over premature complexity. New modules, indicators, AI models, data sources, execution mechanisms, and risk rules require explicit methodological or engineering justification.
 
-MS-0.2C defines the canonical domain representation only. Deterministic trading behavior will be introduced incrementally in later milestones.
+MS-0.2D defines application/service boundaries only. Deterministic trading behavior will be introduced incrementally in later milestones.
