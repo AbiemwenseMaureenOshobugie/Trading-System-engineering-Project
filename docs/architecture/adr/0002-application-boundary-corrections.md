@@ -17,15 +17,23 @@ The audit identified four related concerns:
 
 The MS-0.2D protocol test also contained fixtures that no longer matched the required fields of the canonical domain models.
 
+During correction and retesting, two additional engineering defects were found:
+
+5. The protocol compatibility test used `isinstance()` against protocols that were not marked `@runtime_checkable`.
+6. `MarketCandle` compared timestamps before checking timezone awareness, so a naive/aware timestamp mismatch raised `TypeError` instead of the domain's intended `ValueError`.
+
 ## Decision
 
 We will:
 
 - remove the deferred `DecisionEnginePort` from the executable application port set until a typed final decision contract is formally defined;
+- mark application protocols as `@runtime_checkable` so the existing structural compatibility tests are valid runtime checks;
 - keep `ExecutionPort` as a boundary that accepts Risk and Governance results, with concrete implementations required to reject anything other than authorized control results;
 - explicitly require the data pipeline to transform external/provider records through adapter, validation, and normalization stages before producing canonical `MarketCandle` objects consumed by strategy code;
 - require H1 structure evaluation to receive an explicit `evaluation_cutoff` and define the result as structure as of that boundary, using only completed candles at or before the cutoff;
 - correct protocol-test fixtures to match the current immutable domain contracts;
+- validate candle timezone awareness before comparing timestamps;
+- maintain a repository-level pytest workflow so every push and pull request runs the complete test suite;
 - document these boundaries without introducing unresolved strategy semantics or premature domain abstractions.
 
 ## Consequences
@@ -33,10 +41,12 @@ We will:
 ### Positive
 
 - The application layer no longer exposes a misleading temporary decision type.
+- Runtime protocol compatibility checks are valid and executable.
 - Strategy code has a clear canonical-data boundary.
 - H1 evaluation has an explicit mechanism for preventing look-ahead bias.
 - Execution remains downstream of Risk and Governance rather than becoming a second decision-maker.
-- Tests remain aligned with the actual domain contracts.
+- Candle timestamp validation now produces deterministic domain errors for invalid timezone input.
+- The repository continuously verifies its current test suite through GitHub Actions.
 
 ### Deferred
 
@@ -67,3 +77,7 @@ Rejected because ports define dependency boundaries; concrete execution implemen
 ### Let H1 infer the evaluation boundary from the last supplied candle
 
 Rejected because an implicit boundary is unsafe for replay/backtesting and makes accidental future-candle contamination easier.
+
+### Compare timestamps before checking timezone awareness
+
+Rejected because Python cannot safely order a naive datetime against an aware datetime. The domain contract requires a deterministic validation error instead.
