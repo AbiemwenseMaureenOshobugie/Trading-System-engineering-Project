@@ -23,7 +23,11 @@ from trading_system.domain import (
 
 
 class MarketDataPort(Protocol):
-    """Read canonical market candles from an external data source."""
+    """Read canonical, validated market candles from an external data source.
+
+    Provider-specific raw records must be adapted, validated, and normalized
+    before they cross this application boundary.
+    """
 
     def get_candles(
         self,
@@ -36,11 +40,13 @@ class MarketDataPort(Protocol):
 
 
 class H1MarketStructurePort(Protocol):
-    """Evaluate H1 market structure using the authoritative methodology."""
+    """Evaluate H1 market structure as of an explicit completed-candle cutoff."""
 
     def evaluate(
         self,
+        *,
         candles: Sequence[MarketCandle],
+        evaluation_cutoff: datetime,
     ) -> MarketStructureState: ...
 
 
@@ -88,25 +94,13 @@ class GovernanceEnginePort(Protocol):
     def authorize(self, candidate: DecisionCandidate) -> GovernanceResult: ...
 
 
-class DecisionEnginePort(Protocol):
-    """Produce the final system outcome from component results.
-
-    The exact typed decision result contract is intentionally deferred until
-    the decision layer is formally specified. This port is therefore a
-    dependency boundary only at MS-0.2D.
-    """
-
-    def evaluate(
-        self,
-        *,
-        candidate: DecisionCandidate,
-        risk: RiskResult,
-        governance: GovernanceResult,
-    ) -> str: ...
-
-
 class ExecutionPort(Protocol):
-    """Submit only decisions that have passed risk and governance controls."""
+    """Submit only candidates with authorized Risk and Governance results.
+
+    The concrete execution boundary is responsible for enforcing that both
+    control results are authorized before broker submission. This port does
+    not reinterpret strategy rules or modify the immutable signal definition.
+    """
 
     def submit(
         self,
@@ -126,7 +120,6 @@ class AuditPort(Protocol):
 __all__ = [
     "AuditPort",
     "ConfirmationEnginePort",
-    "DecisionEnginePort",
     "ExecutionPort",
     "GovernanceEnginePort",
     "H1MarketStructurePort",
