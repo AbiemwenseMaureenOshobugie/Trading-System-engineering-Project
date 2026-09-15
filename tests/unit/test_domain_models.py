@@ -7,6 +7,8 @@ import pytest
 
 from trading_system.domain import (
     Direction,
+    KeyLevel,
+    KeyLevelSource,
     MarketCandle,
     PriceZone,
     Regime,
@@ -70,6 +72,31 @@ def test_market_candle_rejects_naive_timestamps() -> None:
 def test_price_zone_is_an_interval() -> None:
     zone = PriceZone(Decimal("1.1000"), Decimal("1.1020"))
     assert zone.lower <= zone.upper
+
+
+def test_key_level_preserves_source_specific_zones() -> None:
+    swing_zone = PriceZone(Decimal("1.1000"), Decimal("1.1050"))
+    range_zone = PriceZone(Decimal("1.1030"), Decimal("1.1080"))
+    key_level = KeyLevel(
+        key_level_id="KL-001",
+        source_types=(KeyLevelSource.VALIDATED_SWING, KeyLevelSource.RANGE_BOUNDARY),
+        source_zones=(
+            (KeyLevelSource.VALIDATED_SWING, swing_zone),
+            (KeyLevelSource.RANGE_BOUNDARY, range_zone),
+        ),
+        active=True,
+        role=None,
+        created_at=TIMESTAMP_CLOSE,
+        updated_at=TIMESTAMP_CLOSE,
+        evidence_refs=("swing-1", "range-1"),
+        state_history=("ACTIVE",),
+    )
+
+    assert key_level.source_zones == (
+        (KeyLevelSource.VALIDATED_SWING, swing_zone),
+        (KeyLevelSource.RANGE_BOUNDARY, range_zone),
+    )
+    assert not hasattr(key_level, "zone_definition")
 
 
 def test_structural_and_direction_enums_are_explicit() -> None:

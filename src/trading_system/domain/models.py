@@ -85,11 +85,12 @@ class MarketStructureState:
 
 @dataclass(frozen=True, slots=True)
 class KeyLevel:
-    """One governing structural key-level zone."""
+    """Canonical structural Key-Level identity with source-specific zones."""
 
     key_level_id: str
-    source_type: KeyLevelSource
-    zone_definition: PriceZone
+    source_types: tuple[KeyLevelSource, ...]
+    source_zones: tuple[tuple[KeyLevelSource, PriceZone], ...]
+    active: bool
     role: Optional[str]
     created_at: datetime
     updated_at: datetime

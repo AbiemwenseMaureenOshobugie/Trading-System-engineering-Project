@@ -52,6 +52,8 @@ class StructureEngine:
             meaningful_highs=(),
             meaningful_lows=(),
             controlling_level=None,
+            range_upper_boundary=None,
+            range_lower_boundary=None,
             structural_events=(),
             evaluated_at=evaluation_cutoff,
         )

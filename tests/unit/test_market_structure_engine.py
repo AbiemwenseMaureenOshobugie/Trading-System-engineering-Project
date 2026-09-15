@@ -28,7 +28,7 @@ def confirmed(i: int, kind: SwingKind, price: str) -> _Confirmed:
     if kind is SwingKind.HIGH:
         c = candle(i, price, price, "1.0000", price)
     else:
-        c = candle(i, "1.0000", "1.1000", price, price)
+        c = candle(i, price, "1.1000", price, price)
     return _Confirmed(_Candidate(i, kind, c), c.timestamp_close)
 
 
@@ -86,7 +86,7 @@ def test_t19_bounding_pair_uses_actual_price_bounds_not_chronology() -> None:
     ]
     upper, lower = H1MarketStructureEngine._bounding_pair(highs, lows)
     assert upper == PriceZone(Decimal("1.1300"), Decimal("1.1300"))
-    assert lower == PriceZone(Decimal("1.0000"), Decimal("1.0800"))
+    assert lower == PriceZone(Decimal("1.0800"), Decimal("1.0800"))
 
 
 def test_t20_state_exposes_explicit_boundary_fields() -> None:
@@ -137,7 +137,7 @@ def test_t23_earlier_non_bounding_swing_is_not_selected() -> None:
     ]
     upper, lower = H1MarketStructureEngine._bounding_pair(highs, lows)
     assert upper == PriceZone(Decimal("1.1200"), Decimal("1.1200"))
-    assert lower == PriceZone(Decimal("1.0000"), Decimal("1.0800"))
+    assert lower == PriceZone(Decimal("1.0800"), Decimal("1.0800"))
 
 
 def test_t24_later_candidates_cannot_change_an_earlier_cutoff_state() -> None:
