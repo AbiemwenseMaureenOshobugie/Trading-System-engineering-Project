@@ -2,430 +2,198 @@
 
 ## 1. Purpose
 
-MS-0.1A defines the deterministic H1 Market Structure Engine for ASTER.
+MS-0.1A defines ASTER's deterministic H1 Market Structure Engine. It consumes validated, normalized, completed H1 candles plus an explicit `evaluation_cutoff` and returns one canonical `MarketStructureState`.
 
-The engine consumes validated, normalized, completed H1 candles and produces one canonical `MarketStructureState` at an explicit evaluation cutoff.
+It owns candidate reconstruction, confirmation, meaningful structural participation, active-chain relationships, controlling swing selection, H1 regime classification, and structural evidence. It does not own M15 confirmation, risk, governance, broker execution, or AI/ML interpretation.
 
-The engine is responsible for reconstructing structural swings, determining meaningful structural participation, classifying structural relationships, maintaining the active structural chain, identifying the controlling swing, and classifying the H1 regime.
+## 2. Evaluation boundary
 
-It does not perform M15 confirmation, risk calculation, governance authorization, broker execution, or AI/ML interpretation.
+Only completed H1 candles whose close/open interval is at or before `evaluation_cutoff` may influence the result. Future candles must never affect historical evaluation. Insufficient history yields initial `UNCLEAR`; no specific candle-count threshold is invented here.
 
-## 2. Objective
+## 3. Candidate lifecycle
 
-For a supplied H1 history and evaluation cutoff, the engine must deterministically answer:
+Candidate identification uses exactly three consecutive candles `(left, middle, right)`.
 
-1. Which three-candle patterns are candidate highs/lows?
-2. Which candidate is currently active when candidates compete?
-3. Which opposing swing is being tracked for an active candidate?
-4. Which candidates are confirmed swings?
-5. Which confirmed swings are meaningful under the active structural chain rules?
-6. What is the structural relationship of each meaningful swing: HH, HL, LH, LL, or equal/neither?
-7. Which meaningful swing controls the established directional structure?
-8. What H1 regime is currently established: `UPTREND`, `DOWNTREND`, `RANGE`, `TRANSITION`, or `UNCLEAR`?
-9. Which structural events explain the resulting state?
+- Candidate High: `middle.high > left.high` and `middle.high > right.high`.
+- Candidate Low: `middle.low < left.low` and `middle.low < right.low`.
+- The middle candle owns the structural extreme.
+- Nested candidates are retained without parent/child hierarchy.
+- If a newer candidate competes with an unconfirmed candidate, the newer candidate wins.
+- If a middle candle satisfies both high and low conditions, the window is dual/ambiguous and produces neither candidate.
+- Subsequent windows continue normally after a dual candidate.
 
-## 3. Inputs
+An opposing swing forms when the next valid opposing candidate appears. Once an opposing swing forms, the candidate identity is immutable. Exactly one opposing swing is active. A newer opposing candidate replaces it only when it is more extreme in the relevant direction; non-replacing candidates remain historical only. A replacement resets opposing-swing tracking.
 
-### 3.1 Required inputs
+## 4. Confirmation and zones
 
-- Validated and normalized H1 `MarketCandle` sequence.
-- Explicit `evaluation_cutoff`.
+A candidate becomes a confirmed swing only after a completed H1 candle closes beyond the extreme of its active opposing swing:
 
-### 3.2 Candle eligibility
+- Candidate High → close below opposing low extreme.
+- Candidate Low → close above opposing high extreme.
 
-Only completed H1 candles whose close/open interval is at or before the evaluation cutoff may influence the result.
+Confirmation does not imply meaningfulness and confirmed swings do not expire merely with time.
 
-Future candles must not influence historical evaluation.
+Canonical zones are immutable:
 
-The engine must not infer a structural boundary or state from candles after the cutoff.
+- Swing High Zone: `[High, max(Open, Close)]`.
+- Swing Low Zone: `[min(Open, Close), Low]`.
 
-### 3.3 Bootstrap
+Reactions may provide evidence but never modify these zone boundaries.
 
-The engine may bootstrap from sufficient historical H1 data rather than waiting for newly generated candles.
+## 5. Meaningfulness and active chain
 
-A configured minimum historical lookback may be required by the application, but the MS-0.1A specification does not invent a specific candle count.
+Meaningfulness is a structural-chain property. A confirmed swing becomes meaningful when its structural relationship makes it part of the active structural chain. There is no separate reaction/event state machine and no undocumented pip, ATR, candle-count, or discretionary threshold.
 
-If the available history is insufficient to establish valid structure, the initial regime is `UNCLEAR`.
+The active chain is a hybrid of chronology and structural relationships:
 
-## 4. Candidate Swing Identification
+- chronology preserves development order;
+- structural relationships determine current active participation;
+- inactive historical swings remain auditable but do not classify current structure;
+- a previously excluded meaningful swing may later re-enter the active chain when later structural relationships make it relevant, while retaining its original chronology;
+- equal meaningful swings remain in the chain, have no directional relationship, and cannot control structure;
+- only the active chain determines current classification, controlling swing, regime, and directional invalidation.
 
-Candidate identification is the handbook-defined structural pattern.
+Two-phase establishment applies:
 
-### 4.1 Candidate High
+1. **Phase 1:** confirmed swings may serve as references while the first valid meaningful structural sequence is established.
+2. **Phase 2:** once structure is established, only the most recent meaningful opposite swing may confirm new structural progression. Confirmed-but-not-meaningful swings cannot do so.
 
-For three consecutive candles `(left, middle, right)`:
+## 6. Structural relationships
 
-`middle.high > left.high` and `middle.high > right.high`.
+Each new meaningful swing is classified by actual relationship, independent of current regime.
 
-The middle candle owns the candidate structural high.
+- Meaningful high above relevant prior meaningful high → `HH`.
+- Meaningful high below relevant prior meaningful high → `LH`.
+- Meaningful low above relevant prior meaningful low → `HL`.
+- Meaningful low below relevant prior meaningful low → `LL`.
+- Overlapping swing zones are equal/neither and do not replace a controlling swing.
 
-### 4.2 Candidate Low
+Equality is defined only by zone overlap. No numerical tolerance is added.
 
-For three consecutive candles `(left, middle, right)`:
+## 7. Controlling swing and trend regimes
 
-`middle.low < left.low` and `middle.low < right.low`.
-
-The middle candle owns the candidate structural low.
-
-### 4.3 Fixed three-candle window
-
-Candidate identification always uses exactly the immediately preceding, middle, and immediately following candles.
-
-### 4.4 Nested candidates
-
-Nested candidates are retained and evaluated exactly like ordinary candidates. No parent/child hierarchy is created.
-
-### 4.5 Competing consecutive candidates
-
-When a newer candidate replaces an unconfirmed candidate, the newer candidate becomes the active candidate.
-
-The replaced candidate and its unconfirmed opposing-swing tracking become inactive for the current structural process.
-
-### 4.6 Dual candidate
-
-If the middle candle simultaneously satisfies Candidate High and Candidate Low, the window is classified as dual/ambiguous and generates neither candidate.
-
-Subsequent windows continue to be evaluated normally.
-
-## 5. Opposing-Swing Tracking
-
-### 5.1 Formation
-
-An opposing swing forms when the opposing candidate is identified after the active candidate.
-
-- Candidate High → subsequent valid Candidate Low.
-- Candidate Low → subsequent valid Candidate High.
-
-### 5.2 Candidate immutability
-
-Once an opposing swing forms, the candidate becomes immutable.
-
-The candidate's identity, timestamp, and structural extreme cannot change.
-
-### 5.3 Dynamic opposing swing
-
-The active opposing swing may update while confirmation remains pending.
-
-For a Candidate High, a newer opposing Candidate Low replaces the current opposing swing only when the newer low is more extreme (lower).
-
-For a Candidate Low, a newer opposing Candidate High replaces the current opposing swing only when the newer high is more extreme (higher).
-
-Non-replacing opposing candidates are retained historically but have no active structural role.
-
-There is exactly one active candidate and one active opposing swing in the current structural process.
-
-## 6. Confirmation
-
-A candidate becomes a confirmed swing when a completed H1 candle closes beyond the extreme of its active opposing swing.
-
-- Candidate High: completed H1 close beyond the opposing swing's low extreme.
-- Candidate Low: completed H1 close beyond the opposing swing's high extreme.
-
-Confirmation changes candidate status only. It does not automatically make the swing meaningful.
-
-A confirmed swing does not expire merely because time passes.
-
-## 7. Swing Zones
-
-The canonical swing zones are fixed at creation.
-
-### 7.1 Swing High Zone
-
-`[High, max(Open, Close)]`
-
-### 7.2 Swing Low Zone
-
-`[min(Open, Close), Low]`
-
-Subsequent market reactions may provide evidence about structural validity or quality, but they do not modify the zone boundaries.
-
-## 8. Meaningfulness
-
-Meaningfulness is a property of a confirmed swing's structural participation, not a separate event sequence.
-
-A confirmed swing becomes meaningful when its structural relationship makes it part of the active structural chain under the established structural-chain rules.
-
-The engine must therefore keep these states distinct:
-
-`Candidate → Opposing Swing → Confirmed Swing → Meaningful Swing`
-
-Confirmation alone is insufficient for meaningfulness.
-
-No additional pip, ATR, candle-count, or discretionary threshold is introduced for meaningfulness.
-
-## 9. Active Structural Chain
-
-The active chain is a hybrid of chronology and structural relationships.
-
-- Chronology preserves the actual development sequence.
-- Structural relationships determine current active participation.
-- Historical meaningful swings remain preserved.
-- Structurally inactive historical swings do not participate in current HH/HL/LH/LL classification.
-- A previously excluded meaningful swing may later become active again if subsequent structural relationships make it relevant, while retaining its original chronological position.
-- Equal meaningful swings remain in the active chain but have no directional relationship.
-- Equal meaningful swings cannot become controlling swings.
-
-Only the active structural chain determines current structural classification, controlling swing, regime, and directional invalidation.
-
-## 10. Structural Relationship Classification
-
-A new meaningful swing is always classified by its actual structural relationship, independent of the current regime.
-
-### 10.1 Highs
-
-Compare a meaningful swing high with the relevant prior meaningful high:
-
-- Higher → `HH`
-- Lower → `LH`
-- Equal/overlapping zones → neither `HH` nor `LH`
-
-### 10.2 Lows
-
-Compare a meaningful swing low with the relevant prior meaningful low:
-
-- Higher → `HL`
-- Lower → `LL`
-- Equal/overlapping zones → neither `HL` nor `LL`
-
-### 10.3 Equality
-
-Two swing zones are equal when they overlap.
-
-No pip, percentage, or ATR tolerance is added.
-
-An equal swing does not replace a controlling swing and cannot become controlling.
-
-## 11. Two-Phase Structural Establishment
-
-### Phase 1 — Structural Establishment
-
-Confirmed swings may serve as references for completing the first meaningful structural sequence.
-
-The first valid structural sequence establishes the initial structural direction from the actual relationships present.
-
-### Phase 2 — Established Structure
-
-Once structure is established, only the most recent meaningful opposite swing may confirm a new candidate's structural progression.
-
-Confirmed-but-not-meaningful swings cannot confirm new structural candidates in Phase 2.
-
-No arbitrary swing count is introduced solely to declare structure established.
-
-## 12. Controlling Swing
-
-The controlling swing is the most recent meaningful opposite swing that established the current directional structure.
+The controlling swing is the most recent meaningful opposite swing that established/progressed the current directional structure.
 
 ### UPTREND
 
-The controlling swing is the most recent meaningful `HL` that established/progressed the up structure.
+Requires at least two meaningful `HH`s, at least two meaningful `HL`s, an intact controlling `HL`, and no completed H1 close below that controlling `HL`. A single HH/HL pair is insufficient. Contrary meaningful evidence does not replace the regime while the controlling HL remains intact.
 
 ### DOWNTREND
 
-The controlling swing is the most recent meaningful `LH` that established/progressed the down structure.
+Requires at least two meaningful `LH`s, at least two meaningful `LL`s, an intact controlling `LH`, and no completed H1 close above that controlling `LH`. A single LH/LL pair is insufficient. Contrary meaningful evidence does not replace the regime while the controlling LH remains intact.
 
-A newer meaningful opposite swing immediately becomes controlling when it establishes structural progression.
+## 8. Invalidation and TRANSITION
 
-An equal meaningful swing never replaces the controlling swing.
+Invalidation is close-based, not wick-based:
 
-## 13. UPTREND
+- UPTREND → completed H1 close below controlling HL.
+- DOWNTREND → completed H1 close above controlling LH.
 
-`UPTREND` requires:
+Wicks warn; H1 closes confirm. Invalidation does not automatically establish the opposite trend.
 
-- at least two meaningful `HH`s;
-- at least two meaningful `HL`s;
-- an intact controlling `HL`;
-- no completed H1 close beyond the controlling `HL` against the established up structure.
+`TRANSITION` exists only after an established regime is invalidated/structurally changed and a replacement regime is not yet established. Invalidated structure remains historical but becomes inactive and non-controlling. Old invalidated structure is not silently revived. Each later invalidation of a replacement regime creates a distinct transition episode.
 
-A single HH/HL pair is insufficient to establish UPTREND.
+## 9. RANGE
 
-A contrary meaningful structure, such as an `LH`, does not by itself change the regime while the controlling HL remains intact.
+RANGE is not the complement of the two trend regimes. A valid range requires:
 
-## 14. DOWNTREND
+1. an upper resistance boundary zone;
+2. a lower support boundary zone;
+3. meaningful reactions to those boundaries;
+4. alternating upper/lower boundary reactions, beginning from either side;
+5. no sustained directional progression sufficient for UPTREND or DOWNTREND.
 
-`DOWNTREND` requires:
+### Initial boundary selection — locked bounding-pair rule
 
-- at least two meaningful `LH`s;
-- at least two meaningful `LL`s;
-- an intact controlling `LH`;
-- no completed H1 close beyond the controlling `LH` against the established down structure.
+When RANGE is first being established, select the **bounding pair**:
 
-A single LH/LL pair is insufficient to establish DOWNTREND.
+- `range_upper_boundary` is the meaningful swing-high zone that actually bounds the developing range;
+- `range_lower_boundary` is the meaningful swing-low zone that actually bounds the developing range.
 
-A contrary meaningful structure, such as an `HL`, does not by itself change the regime while the controlling LH remains intact.
+Chronological order does not select the pair. A swing is not promoted merely because it appeared first; it must actually bound the developing range.
 
-## 15. H1 Invalidation
+Selected boundary zones are immutable. Later reactions validate them but never change their coordinates.
 
-H1 structural invalidation is based on a completed H1 close, not a wick.
+### Boundary reaction
 
-- UPTREND invalidates when a completed H1 candle closes below the controlling HL.
-- DOWNTREND invalidates when a completed H1 candle closes above the controlling LH.
+A meaningful high is an upper-boundary reaction when its canonical swing-high zone overlaps the upper boundary. A meaningful low is a lower-boundary reaction when its canonical swing-low zone overlaps the lower boundary. No numerical proximity tolerance is introduced.
 
-Wicks warn; H1 closes confirm.
+### Range establishment
 
-Invalidation ends the established directional regime. It does not automatically establish the opposite trend.
+The alternating reaction sequence may begin from either boundary. Non-directional evidence that does not satisfy the complete RANGE conditions remains `UNCLEAR`.
 
-## 16. TRANSITION
+### Range breakout
 
-`TRANSITION` exists only after an established regime has undergone structural invalidation/change and the replacement regime has not yet been established.
+A range breakout is recorded as a structural event/subtype of the transition process, e.g. `RANGE_BREAKOUT_UP` or `RANGE_BREAKOUT_DOWN`. A breakout alone does not establish UPTREND or DOWNTREND. Failed penetration returning into the range does not automatically change RANGE.
 
-Examples:
+## 10. UNCLEAR and persistence
 
-- UPTREND + confirmed close below controlling HL → `TRANSITION`.
-- DOWNTREND + confirmed close above controlling LH → `TRANSITION`.
+`UNCLEAR` is the fallback when evidence is insufficient, ambiguous, internally conflicting, or does not establish UPTREND, DOWNTREND, RANGE, or a post-invalidation transition.
 
-The invalidated historical structure remains preserved historically but becomes structurally inactive and non-controlling.
+UNCLEAR may move directly to the first valid established regime. TRANSITION is reserved for change after an established regime.
 
-A new transition episode is created when a later established replacement regime is itself invalidated.
+An established regime persists while its defining conditions remain valid. Isolated opposing evidence does not replace it. Initial evidence that cannot validly distinguish a regime remains UNCLEAR.
 
-Old invalidated structure is not silently revived as the current structure.
+## 11. Domain output contract
 
-## 17. RANGE
+`MarketStructureState` must expose at minimum:
 
-RANGE is a structural regime, not the complement of UPTREND/DOWNTREND.
+- `regime`;
+- `structure_version`;
+- `meaningful_highs`;
+- `meaningful_lows`;
+- `controlling_level` where applicable;
+- `range_upper_boundary` where selected;
+- `range_lower_boundary` where selected;
+- `structural_events`;
+- `evaluated_at`.
 
-A valid range requires:
+Boundary fields are explicit `Optional[PriceZone]` evidence. They are `None` until selected and remain immutable once selected.
 
-1. alternating meaningful swing structure;
-2. an upper resistance boundary zone;
-3. a lower support boundary zone;
-4. later meaningful swing reactions to those boundaries;
-5. the boundary reactions occur as an alternating sequence between the upper and lower boundaries;
-6. no sustained directional progression sufficient to establish UPTREND or DOWNTREND.
+## 12. Deterministic invariants
 
-### 17.1 Boundary reaction
-
-A later meaningful swing is a reaction to an existing boundary when its canonical swing zone overlaps that boundary zone.
-
-- Meaningful High zone overlapping upper boundary → upper-boundary reaction.
-- Meaningful Low zone overlapping lower boundary → lower-boundary reaction.
-- No overlap → no reaction to that boundary.
-
-No numerical proximity tolerance is introduced.
-
-### 17.2 Range establishment
-
-The alternating reaction sequence may begin from either boundary.
-
-The engine must observe actual alternating structural reactions between the upper and lower boundaries before establishing RANGE.
-
-Non-directional structure that does not satisfy the RANGE conditions remains `UNCLEAR`.
-
-### 17.3 Range breakout
-
-A range breakout is recorded as a structural event/subtype of the existing transition process, such as `RANGE_BREAKOUT_UP` or `RANGE_BREAKOUT_DOWN`.
-
-A range breakout alone does not establish UPTREND or DOWNTREND.
-
-A failed boundary penetration that returns into the range does not automatically change RANGE; it is recorded as a structural observation/event unless the established transition rules are satisfied.
-
-## 18. UNCLEAR
-
-`UNCLEAR` is the required fallback when the evidence is insufficient, ambiguous, internally conflicting, or does not validly establish:
-
-- UPTREND;
-- DOWNTREND;
-- RANGE; or
-- a post-invalidation TRANSITION state.
-
-While UNCLEAR, the engine provides no valid H1 directional bias.
-
-UNCLEAR may transition directly to the first valid established regime. TRANSITION is reserved for structural change after an established regime.
-
-## 19. Regime persistence and conflict handling
-
-An established regime persists while its defining conditions remain valid.
-
-Isolated opposing evidence does not replace an established regime.
-
-If both trend and range evidence appear:
-
-- an established regime remains until its defining conditions are invalidated/changed;
-- during initial establishment, evidence that cannot validly distinguish a regime remains UNCLEAR.
-
-No additional precedence regime is introduced.
-
-## 20. Evaluation output
-
-The engine returns `MarketStructureState` containing at minimum:
-
-- current regime;
-- strategy/structure version;
-- meaningful highs;
-- meaningful lows;
-- controlling level/swing where applicable;
-- structural events explaining state transitions;
-- evaluation timestamp/cutoff.
-
-The output must preserve sufficient evidence to explain why the current regime was reached without reconstructing decisions from future data.
-
-## 21. Deterministic invariants
-
-The implementation must enforce these invariants:
-
-1. Candidate windows always contain exactly three H1 candles.
-2. Dual candidates produce neither a high nor a low candidate.
-3. An unconfirmed candidate may be replaced by a newer competing candidate.
-4. Once an opposing swing forms, candidate identity is immutable.
-5. Exactly one active opposing swing exists for the active candidate.
-6. Only a more extreme opposing candidate replaces the active opposing swing.
-7. Confirmation requires a completed H1 close beyond the opposing swing extreme.
+1. Candidate windows contain exactly three candles.
+2. Dual candidates produce neither candidate.
+3. Newer competing unconfirmed candidates replace older ones.
+4. Candidate identity becomes immutable when an opposing swing forms.
+5. Exactly one opposing swing is active.
+6. Only a more extreme opposing candidate replaces it.
+7. Confirmation requires a completed H1 close beyond the opposing extreme.
 8. Confirmation does not imply meaningfulness.
-9. Meaningfulness follows active structural-chain participation.
+9. Meaningfulness follows active-chain participation.
 10. Swing zones are immutable.
 11. Equality is zone overlap.
 12. Equal swings never become controlling.
-13. Regime classification uses the active structural chain only.
-14. Directional invalidation requires a completed H1 close beyond the controlling structural level.
+13. Current classification uses the active chain only.
+14. Trend invalidation requires a completed H1 close beyond the controlling level.
 15. Invalidation does not automatically reverse the regime.
-16. RANGE is not implemented as `not UPTREND and not DOWNTREND`.
+16. RANGE is not `not UPTREND and not DOWNTREND`.
 17. RANGE requires alternating boundary reactions.
-18. Future candles after `evaluation_cutoff` cannot influence the result.
-19. Historical structural evidence remains auditable even when it becomes inactive.
-20. The engine must not introduce undocumented numerical thresholds.
+18. Initial RANGE boundaries use the bounding-pair rule.
+19. Boundary evidence is explicit in `MarketStructureState`.
+20. Boundary zones remain immutable after selection.
+21. Future candles after `evaluation_cutoff` cannot influence the result.
+22. Historical evidence remains auditable when inactive.
+23. No undocumented numerical thresholds may be introduced.
+24. Identical candles and cutoff produce identical state and structural events.
 
-## 22. Explicit non-goals
+## 13. Acceptance tests
 
-MS-0.1A does not define:
+The implementation must cover the existing MS-0.1A lifecycle tests plus:
 
-- M15 CP-1/CP-2 confirmation;
-- CP-2 execution-aware SL buffer;
-- key-level source detection beyond structural information needed by H1 range state;
-- risk percentage selection;
-- session timezone/value definitions;
-- trade/loss counting semantics;
-- broker execution;
-- AI/ML prediction or interpretation;
-- live trading authorization.
+- **T-19 — Bounding pair:** actual bounding meaningful high/low zones are selected; chronology alone cannot select them.
+- **T-20 — Explicit state evidence:** upper/lower boundary fields are present and correct in `MarketStructureState`.
+- **T-21 — Boundary immutability:** later reactions do not change selected zones.
+- **T-22 — Alternating reactions:** RANGE requires alternating upper/lower reactions, starting from either side.
+- **T-23 — Non-bounding candidate:** an earlier but non-bounding meaningful swing is not promoted to a boundary.
+- **T-24 — Cutoff safety:** later boundary candidates/reactions cannot influence an earlier evaluation.
 
-Those remain separate milestones or explicitly unresolved decisions.
+The broader acceptance suite must also demonstrate candidate detection/replacement, opposing-swing tracking, confirmation, meaningfulness, active-chain construction, HH/HL/LH/LL/equality, controlling-swing updates, UPTREND/DOWNTREND establishment and persistence, invalidation/TRANSITION, UNCLEAR fallback, regime conflict handling, deterministic replay, and explanatory structural events.
 
-## 23. Acceptance criteria
+## 14. Non-goals
 
-MS-0.1A implementation is acceptable only if tests demonstrate at least:
+MS-0.1A does not define M15 CP-1/CP-2 confirmation, CP-2 execution-aware buffers, risk percentages, session values/timezones, trade/loss counting semantics, broker execution, live authorization, or AI/ML prediction.
 
-1. Correct three-candle candidate high/low detection.
-2. Correct dual-candidate rejection.
-3. Correct candidate replacement.
-4. Correct opposing-swing formation and dynamic extreme replacement.
-5. Correct candidate immutability after opposing swing formation.
-6. Correct confirmation only after completed H1 close beyond the opposing extreme.
-7. Correct separation of confirmed and meaningful swings.
-8. Correct active-chain construction and historical preservation.
-9. Correct HH/HL/LH/LL/equality classification.
-10. Correct controlling-swing updates.
-11. Correct UPTREND establishment and persistence.
-12. Correct DOWNTREND establishment and persistence.
-13. Correct H1 close-based invalidation and TRANSITION.
-14. Correct RANGE establishment through alternating boundary reactions.
-15. Correct zone-overlap reaction detection.
-16. Correct UNCLEAR fallback.
-17. Correct regime persistence under isolated opposing evidence.
-18. Correct no-lookahead behavior at different evaluation cutoffs.
-19. Deterministic replay: identical inputs and cutoff produce identical state and structural events.
-20. Evidence sufficient to explain every regime transition.
+## 15. Implementation gate
 
-## 24. Remaining specification gate
-
-One item must remain explicitly unresolved before implementation if the handbook does not already define it elsewhere: the deterministic method for selecting the **initial upper and lower candidate boundary zones** when RANGE is first being established.
-
-The implementation must not invent a boundary-selection heuristic. Until that rule is explicitly locked, RANGE establishment must remain blocked at that boundary-selection step rather than silently applying an arbitrary first-high/first-low rule.
+The RANGE boundary-selection ambiguity is closed. MS-0.1A is specification-complete and may proceed to implementation subject only to normal spec-to-contract-to-port-to-test consistency checks.

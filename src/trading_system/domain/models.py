@@ -77,6 +77,8 @@ class MarketStructureState:
     meaningful_highs: tuple[SwingPoint, ...]
     meaningful_lows: tuple[SwingPoint, ...]
     controlling_level: Optional[SwingPoint]
+    range_upper_boundary: Optional[PriceZone]
+    range_lower_boundary: Optional[PriceZone]
     structural_events: tuple[str, ...]
     evaluated_at: datetime
 
