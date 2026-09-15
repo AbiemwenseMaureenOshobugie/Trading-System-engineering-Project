@@ -35,7 +35,7 @@ def test_klt01_validated_swing_uses_immutable_ms01a_zone():
     c = candle(2, "1.1040", "1.1100", "1.1000", "1.1060")
     swing = SwingPoint(c.timestamp_open, Decimal("1.1100"), SwingKind.HIGH)
     levels = KeyLevelDetectionEngine().detect(candles=(c,), structure=state(highs=(swing,)))
-    assert levels[0].source_zones == ((KeyLevelSource.VALIDATED_SWING, PriceZone(Decimal("1.1100"), Decimal("1.1060"))),)
+    assert levels[0].source_zones == ((KeyLevelSource.VALIDATED_SWING, PriceZone(Decimal("1.1060"), Decimal("1.1100"))),)
 
 
 def test_klt02_range_boundaries_are_consumed_without_reconstruction():
