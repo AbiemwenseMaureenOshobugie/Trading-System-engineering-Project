@@ -99,7 +99,7 @@ def test_klt09_multiple_provenance_is_retained():
 
 
 def test_klt10_engine_does_not_select_governing_setup_key_level():
-    levels = KeyLevelDetectionEngine().detect(candles=(), structure=state(upper=PriceZone(Decimal("1.1200"), Decimal("1.1250")), lower=PriceZone(Decimal("1.0800"), Decimal("1.0850")))
+    levels = KeyLevelDetectionEngine().detect(candles=(), structure=state(upper=PriceZone(Decimal("1.1200"), Decimal("1.1250")), lower=PriceZone(Decimal("1.0800"), Decimal("1.0850"))))
     assert len(levels) == 2
     assert all(level.active for level in levels)
 
