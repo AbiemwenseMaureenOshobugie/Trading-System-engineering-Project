@@ -79,7 +79,7 @@ def test_low_is_rejected_without_right_higher_high() -> None:
         candles=(
             candle(0, "1.1050", "1.1080", "1.1000", "1.1020"),
             candle(1, "1.1020", "1.1030", "1.0950", "1.0970"),
-            candle(2, "1.0970", "1.1020", "1.0960", "1.1030"),
+            candle(2, "1.0970", "1.1020", "1.0960", "1.0990"),
         )
     )
     assert swings == ()
