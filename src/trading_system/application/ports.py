@@ -17,6 +17,7 @@ from trading_system.domain import (
     KeyLevel,
     MarketCandle,
     MarketStructureState,
+    RiskRequest,
     RiskResult,
     Timeframe,
 )
@@ -73,9 +74,9 @@ class SetupClassifierPort(Protocol):
 
 @runtime_checkable
 class RiskEnginePort(Protocol):
-    """Assess a candidate without owning strategy qualification."""
+    """Qualify and size a strategy candidate using downstream risk inputs."""
 
-    def assess(self, candidate: DecisionCandidate) -> RiskResult: ...
+    def assess(self, request: RiskRequest) -> RiskResult: ...
 
 
 @runtime_checkable
