@@ -154,16 +154,17 @@ def test_execution_buffer_is_spread_plus_slippage_plus_noise_plus_volatility_adj
 
 
 def test_risk_is_fixed_at_one_percent_and_position_size_uses_monetary_risk():
-    c = candidate(Direction.BUY, "1.1000", "1.0950")
+    c = candidate(Direction.BUY, "1.1000", "1.0951")
     result = RiskEngine().assess(
         request(
             c,
             equity="10000",
             value_per_price_unit="100000",
+            spread="0.0001",
         )
     )
 
     assert result.requested_risk == Decimal("0.01")
     assert result.approved_risk == Decimal("0.01")
     assert result.risk_amount == Decimal("100.00")
-    assert result.position_size == Decimal("16")
+    assert result.position_size == Decimal("0.2")
