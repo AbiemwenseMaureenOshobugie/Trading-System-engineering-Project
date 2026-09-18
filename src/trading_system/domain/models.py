@@ -136,6 +136,7 @@ class RiskRequest:
 
     candidate: DecisionCandidate
     active_key_levels: tuple[KeyLevel, ...]
+    setup_key_level_id: Optional[str]
     account_equity: Decimal
     spread: Decimal
     slippage: Decimal
