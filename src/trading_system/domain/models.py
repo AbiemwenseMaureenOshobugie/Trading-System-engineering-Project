@@ -180,6 +180,22 @@ class RiskResult:
 
 
 @dataclass(frozen=True, slots=True)
+class GovernanceRequest:
+    """Inputs required by the Governance Engine to authorize one candidate."""
+
+    candidate: DecisionCandidate
+    instrument_session_eligible: bool
+    daily_trade_count: int
+    daily_loss_count: int
+
+    def __post_init__(self) -> None:
+        if self.daily_trade_count < 0:
+            raise ValueError("daily_trade_count must not be negative")
+        if self.daily_loss_count < 0:
+            raise ValueError("daily_loss_count must not be negative")
+
+
+@dataclass(frozen=True, slots=True)
 class GovernanceResult:
     """Independent outcome produced by the Governance Engine."""
 
