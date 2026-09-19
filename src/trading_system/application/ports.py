@@ -12,6 +12,8 @@ from typing import Protocol, Sequence, runtime_checkable
 from trading_system.domain import (
     ConfirmationSequence,
     DecisionCandidate,
+    DecisionRequest,
+    DecisionResult,
     ExecutionRecord,
     GovernanceRequest,
     GovernanceResult,
@@ -88,6 +90,13 @@ class GovernanceEnginePort(Protocol):
 
 
 @runtime_checkable
+class DecisionEnginePort(Protocol):
+    """Aggregate strategy, risk, and governance outcomes into one final state."""
+
+    def decide(self, request: DecisionRequest) -> DecisionResult: ...
+
+
+@runtime_checkable
 class ExecutionPort(Protocol):
     """Submit only candidates with authorized Risk and Governance results."""
 
@@ -110,6 +119,7 @@ class AuditPort(Protocol):
 __all__ = [
     "AuditPort",
     "ConfirmationEnginePort",
+    "DecisionEnginePort",
     "ExecutionPort",
     "GovernanceEnginePort",
     "H1MarketStructurePort",
