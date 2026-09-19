@@ -46,3 +46,11 @@ class RiskStatus(StrEnum):
 class GovernanceStatus(StrEnum):
     GOVERNANCE_AUTHORIZED = "GOVERNANCE_AUTHORIZED"
     GOVERNANCE_BLOCKED = "GOVERNANCE_BLOCKED"
+
+
+class DecisionStatus(StrEnum):
+    NO_SETUP = "NO_SETUP"
+    WAIT = "WAIT"
+    VALID = "VALID"
+    RISK_REJECTED = "RISK_REJECTED"
+    GOVERNANCE_BLOCKED = "GOVERNANCE_BLOCKED"
