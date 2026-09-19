@@ -13,6 +13,7 @@ from trading_system.domain import (
     ConfirmationSequence,
     DecisionCandidate,
     ExecutionRecord,
+    GovernanceRequest,
     GovernanceResult,
     KeyLevel,
     MarketCandle,
@@ -83,7 +84,7 @@ class RiskEnginePort(Protocol):
 class GovernanceEnginePort(Protocol):
     """Apply hard operational permissions to a decision candidate."""
 
-    def authorize(self, candidate: DecisionCandidate) -> GovernanceResult: ...
+    def authorize(self, request: GovernanceRequest) -> GovernanceResult: ...
 
 
 @runtime_checkable
