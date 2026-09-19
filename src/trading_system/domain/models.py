@@ -11,6 +11,7 @@ from typing import Optional
 
 from .enums import (
     ConfirmationType,
+    DecisionStatus,
     Direction,
     GovernanceStatus,
     KeyLevelSource,
@@ -205,6 +206,31 @@ class GovernanceResult:
     daily_loss_count: int
     checks: tuple[str, ...]
     status: GovernanceStatus
+    reason_codes: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionRequest:
+    """Inputs used by the Decision Engine to aggregate upstream outcomes."""
+
+    candidate: Optional[DecisionCandidate]
+    strategy_pending: bool
+    risk_result: Optional[RiskResult]
+    governance_result: Optional[GovernanceResult]
+
+    def __post_init__(self) -> None:
+        if self.candidate is None and self.risk_result is not None:
+            raise ValueError("risk_result requires a candidate")
+        if self.candidate is None and self.governance_result is not None:
+            raise ValueError("governance_result requires a candidate")
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionResult:
+    """Final deterministic decision state before execution."""
+
+    decision_id: Optional[str]
+    status: DecisionStatus
     reason_codes: tuple[str, ...]
 
 
