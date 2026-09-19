@@ -89,7 +89,7 @@ def test_buy_uses_nearest_opposing_source_zone_boundary_when_rr_is_at_least_2():
         request(
             c,
             levels=(
-                key_level("KL-NEAR", "1.1100", "1.1150"),
+                key_level("KL-NEAR", "1.1120", "1.1150"),
                 key_level("KL-FAR", "1.1300", "1.1350"),
             ),
         )
@@ -97,7 +97,7 @@ def test_buy_uses_nearest_opposing_source_zone_boundary_when_rr_is_at_least_2():
 
     assert result.status is RiskStatus.RISK_AUTHORIZED
     assert result.final_stop_loss == Decimal("1.0949")
-    assert result.target_price == Decimal("1.1100")
+    assert result.target_price == Decimal("1.1120")
     assert result.risk_reward > Decimal("2")
 
 
@@ -125,7 +125,7 @@ def test_sell_uses_nearest_opposing_source_zone_boundary():
         request(
             c,
             levels=(
-                key_level("KL-NEAR", "1.0850", "1.0900"),
+                key_level("KL-NEAR", "1.0850", "1.0880"),
                 key_level("KL-FAR", "1.0700", "1.0750"),
             ),
         )
@@ -133,7 +133,7 @@ def test_sell_uses_nearest_opposing_source_zone_boundary():
 
     assert result.status is RiskStatus.RISK_AUTHORIZED
     assert result.final_stop_loss == Decimal("1.1051")
-    assert result.target_price == Decimal("1.0900")
+    assert result.target_price == Decimal("1.0880")
     assert result.risk_reward > Decimal("2")
 
 
