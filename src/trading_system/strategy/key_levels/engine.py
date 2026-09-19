@@ -58,7 +58,7 @@ class KeyLevelDetectionEngine(KeyLevelEnginePort):
                     f"missing source candle for meaningful swing at {swing.timestamp.isoformat()}"
                 )
             if swing.kind is SwingKind.HIGH:
-                zone = PriceZone(candle.high, max(candle.open, candle.close))
+                zone = PriceZone(max(candle.open, candle.close), candle.high)
                 role = "RESISTANCE"
             else:
                 zone = PriceZone(min(candle.open, candle.close), candle.low)

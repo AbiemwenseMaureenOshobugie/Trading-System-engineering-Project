@@ -131,6 +131,35 @@ class DecisionCandidate:
 
 
 @dataclass(frozen=True, slots=True)
+class RiskRequest:
+    """Inputs required by the Risk Engine to qualify and size one candidate."""
+
+    candidate: DecisionCandidate
+    active_key_levels: tuple[KeyLevel, ...]
+    setup_key_level_id: Optional[str]
+    account_equity: Decimal
+    spread: Decimal
+    slippage: Decimal
+    noise: Decimal
+    volatility_adjustment: Decimal
+    value_per_price_unit: Decimal
+
+    def __post_init__(self) -> None:
+        if self.account_equity <= 0:
+            raise ValueError("account_equity must be positive")
+        for name, value in (
+            ("spread", self.spread),
+            ("slippage", self.slippage),
+            ("noise", self.noise),
+            ("volatility_adjustment", self.volatility_adjustment),
+        ):
+            if value < 0:
+                raise ValueError(f"{name} must not be negative")
+        if self.value_per_price_unit <= 0:
+            raise ValueError("value_per_price_unit must be positive")
+
+
+@dataclass(frozen=True, slots=True)
 class RiskResult:
     """Independent outcome produced by the Risk Engine."""
 
@@ -139,9 +168,13 @@ class RiskResult:
     approved_risk: Optional[Decimal]
     position_size: Optional[Decimal]
     entry_assumption: Optional[Decimal]
+    structural_stop_loss: Optional[Decimal]
+    final_stop_loss: Optional[Decimal]
+    target_price: Optional[Decimal]
     stop_distance: Optional[Decimal]
     target_distance: Optional[Decimal]
     risk_reward: Optional[Decimal]
+    risk_amount: Optional[Decimal]
     status: RiskStatus
     reason_codes: tuple[str, ...]
 

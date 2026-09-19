@@ -20,6 +20,7 @@ from .models import (
     MarketCandle,
     MarketStructureState,
     PriceZone,
+    RiskRequest,
     RiskResult,
     SwingPoint,
 )
@@ -39,6 +40,7 @@ __all__ = [
     "MarketStructureState",
     "PriceZone",
     "Regime",
+    "RiskRequest",
     "RiskResult",
     "RiskStatus",
     "SwingKind",

@@ -17,6 +17,7 @@ from trading_system.domain import (
     KeyLevel,
     MarketCandle,
     MarketStructureState,
+    RiskRequest,
     RiskResult,
     Timeframe,
 )
@@ -24,19 +25,10 @@ from trading_system.domain import (
 
 @runtime_checkable
 class MarketDataPort(Protocol):
-    """Read canonical, validated market candles from an external data source.
-
-    Provider-specific raw records must be adapted, validated, and normalized
-    before they cross this application boundary.
-    """
+    """Read canonical, validated market candles from an external market-data source."""
 
     def get_candles(
-        self,
-        *,
-        symbol: str,
-        timeframe: Timeframe,
-        start: datetime,
-        end: datetime,
+        self, *, symbol: str, timeframe: Timeframe, start: datetime, end: datetime
     ) -> Sequence[MarketCandle]: ...
 
 
@@ -45,10 +37,7 @@ class H1MarketStructurePort(Protocol):
     """Evaluate H1 market structure as of an explicit completed-candle cutoff."""
 
     def evaluate(
-        self,
-        *,
-        candles: Sequence[MarketCandle],
-        evaluation_cutoff: datetime,
+        self, *, candles: Sequence[MarketCandle], evaluation_cutoff: datetime
     ) -> MarketStructureState: ...
 
 
@@ -57,23 +46,20 @@ class KeyLevelEnginePort(Protocol):
     """Detect approved key levels from validated strategy inputs."""
 
     def detect(
-        self,
-        *,
-        candles: Sequence[MarketCandle],
-        structure: MarketStructureState,
+        self, *, candles: Sequence[MarketCandle], structure: MarketStructureState
     ) -> Sequence[KeyLevel]: ...
 
 
 @runtime_checkable
 class ConfirmationEnginePort(Protocol):
-    """Evaluate the approved M15 confirmation processes."""
+    """Evaluate confirmation against an already-selected governing Key Level."""
 
     def evaluate(
         self,
         *,
         candles: Sequence[MarketCandle],
         structure: MarketStructureState,
-        key_levels: Sequence[KeyLevel],
+        setup_key_level: KeyLevel,
     ) -> Sequence[ConfirmationSequence]: ...
 
 
@@ -82,16 +68,15 @@ class SetupClassifierPort(Protocol):
     """Translate qualifying confirmation sequences into candidates."""
 
     def classify(
-        self,
-        confirmations: Sequence[ConfirmationSequence],
+        self, confirmations: Sequence[ConfirmationSequence]
     ) -> Sequence[DecisionCandidate]: ...
 
 
 @runtime_checkable
 class RiskEnginePort(Protocol):
-    """Assess a candidate without owning strategy qualification."""
+    """Qualify and size a strategy candidate using downstream risk inputs."""
 
-    def assess(self, candidate: DecisionCandidate) -> RiskResult: ...
+    def assess(self, request: RiskRequest) -> RiskResult: ...
 
 
 @runtime_checkable
@@ -103,12 +88,7 @@ class GovernanceEnginePort(Protocol):
 
 @runtime_checkable
 class ExecutionPort(Protocol):
-    """Submit only candidates with authorized Risk and Governance results.
-
-    The concrete execution boundary is responsible for enforcing that both
-    control results are authorized before broker submission. This port does
-    not reinterpret strategy rules or modify the immutable signal definition.
-    """
+    """Submit only candidates with authorized Risk and Governance results."""
 
     def submit(
         self,
