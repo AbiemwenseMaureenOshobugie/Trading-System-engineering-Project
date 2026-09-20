@@ -4,6 +4,7 @@ from decimal import Decimal
 from trading_system.application import (
     AuditPort,
     ConfirmationEnginePort,
+    DecisionEnginePort,
     ExecutionPort,
     GovernanceEnginePort,
     H1MarketStructurePort,
@@ -13,6 +14,8 @@ from trading_system.application import (
     SetupClassifierPort,
 )
 from trading_system.domain import (
+    DecisionResult,
+    DecisionStatus,
     GovernanceResult,
     GovernanceStatus,
     MarketCandle,
@@ -65,7 +68,7 @@ class KeyLevels:
 
 
 class ConfirmationEngine:
-    def evaluate(self, *, candles, structure, key_levels):
+    def evaluate(self, *, candles, structure, setup_key_level):
         return []
 
 
@@ -75,25 +78,29 @@ class Classifier:
 
 
 class Risk:
-    def assess(self, candidate):
+    def assess(self, request):
         return RiskResult(
-            decision_id=candidate.decision_id,
+            decision_id=request.candidate.decision_id,
             requested_risk=None,
             approved_risk=None,
             position_size=None,
             entry_assumption=None,
+            structural_stop_loss=None,
+            final_stop_loss=None,
+            target_price=None,
             stop_distance=None,
             target_distance=None,
             risk_reward=None,
+            risk_amount=None,
             status=RiskStatus.RISK_REJECTED,
             reason_codes=("TEST",),
         )
 
 
 class Governance:
-    def authorize(self, candidate):
+    def authorize(self, request):
         return GovernanceResult(
-            decision_id=candidate.decision_id,
+            decision_id=request.candidate.decision_id,
             instrument_session_eligible=True,
             daily_trade_count=0,
             daily_loss_count=0,
@@ -103,8 +110,17 @@ class Governance:
         )
 
 
+class Decision:
+    def decide(self, request):
+        return DecisionResult(
+            decision_id=request.candidate.decision_id if request.candidate else None,
+            status=DecisionStatus.WAIT,
+            reason_codes=("TEST",),
+        )
+
+
 class Execution:
-    def submit(self, *, candidate, risk, governance):
+    def submit(self, *, candidate, decision, risk, governance):
         raise NotImplementedError
 
 
@@ -122,6 +138,7 @@ def test_ports_are_runtime_compatible_with_structural_implementations():
         (SetupClassifierPort, Classifier()),
         (RiskEnginePort, Risk()),
         (GovernanceEnginePort, Governance()),
+        (DecisionEnginePort, Decision()),
         (ExecutionPort, Execution()),
         (AuditPort, Audit()),
     ]

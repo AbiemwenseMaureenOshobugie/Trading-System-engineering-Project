@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Protocol, Sequence, runtime_checkable
 
 from trading_system.domain import (
+    AuditRecord,
     ConfirmationSequence,
     DecisionCandidate,
     DecisionRequest,
@@ -98,12 +99,13 @@ class DecisionEnginePort(Protocol):
 
 @runtime_checkable
 class ExecutionPort(Protocol):
-    """Submit only candidates with authorized Risk and Governance results."""
+    """Submit only candidates with authorized Decision, Risk, and Governance results."""
 
     def submit(
         self,
         *,
         candidate: DecisionCandidate,
+        decision: DecisionResult,
         risk: RiskResult,
         governance: GovernanceResult,
     ) -> ExecutionRecord: ...
@@ -113,7 +115,7 @@ class ExecutionPort(Protocol):
 class AuditPort(Protocol):
     """Record material boundary events without owning business rules."""
 
-    def record(self, event: object) -> None: ...
+    def record(self, event: AuditRecord) -> None: ...
 
 
 __all__ = [
