@@ -7,6 +7,7 @@ Concrete adapters and services are introduced in later milestones.
 from .ports import (
     AuditPort,
     ConfirmationEnginePort,
+    DecisionEnginePort,
     ExecutionPort,
     GovernanceEnginePort,
     H1MarketStructurePort,
@@ -19,6 +20,7 @@ from .ports import (
 __all__ = [
     "AuditPort",
     "ConfirmationEnginePort",
+    "DecisionEnginePort",
     "ExecutionPort",
     "GovernanceEnginePort",
     "H1MarketStructurePort",

@@ -54,3 +54,10 @@ class DecisionStatus(StrEnum):
     VALID = "VALID"
     RISK_REJECTED = "RISK_REJECTED"
     GOVERNANCE_BLOCKED = "GOVERNANCE_BLOCKED"
+
+
+class ExecutionState(StrEnum):
+    AUTHORIZED = "AUTHORIZED"
+    SUBMITTED = "SUBMITTED"
+    FILLED = "FILLED"
+    FAILED = "FAILED"

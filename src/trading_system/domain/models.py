@@ -1,7 +1,8 @@
 """Canonical immutable domain models for the trading system.
 
 These models describe data exchanged between components. They do not implement
-trading decisions, setup detection, risk calculations, or execution behavior.
+trading decisions, setup detection, risk calculations, governance rules, or
+broker behavior.
 """
 
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ from .enums import (
     ConfirmationType,
     DecisionStatus,
     Direction,
+    ExecutionState,
     GovernanceStatus,
     KeyLevelSource,
     Regime,
@@ -235,23 +237,46 @@ class DecisionResult:
 
 
 @dataclass(frozen=True, slots=True)
-class ExecutionRecord:
-    """Broker execution record kept separate from the strategy signal."""
+class PaperOrder:
+    """Deterministic paper execution request."""
 
+    order_id: str
     decision_id: str
-    order_submission_timestamp: datetime
-    broker_order_id: Optional[str]
-    requested_order_details: tuple[str, ...]
-    execution_timestamp: Optional[datetime]
-    execution_entry_price: Optional[Decimal]
-    executed_quantity: Optional[Decimal]
-    slippage: Optional[Decimal]
-    broker_status: str
+    symbol: str
+    direction: Direction
+    requested_entry_price: Decimal
+    requested_quantity: Decimal
+    submission_timestamp: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class PaperFill:
+    """Deterministic paper execution result."""
+
+    fill_id: str
+    order_id: str
+    fill_price: Decimal
+    executed_quantity: Decimal
+    execution_timestamp: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutionRecord:
+    """Immutable execution outcome kept separate from the strategy signal."""
+
+    execution_id: str
+    decision_id: str
+    state: ExecutionState
+    order_id: str
+    fill_id: Optional[str]
+    order: PaperOrder
+    fill: Optional[PaperFill]
+    failure_reason: Optional[str]
 
 
 @dataclass(frozen=True, slots=True)
 class AuditRecord:
-    """Trace record for a material system event or decision boundary."""
+    """Immutable trace record for a material system event or decision boundary."""
 
     audit_id: str
     timestamp: datetime
