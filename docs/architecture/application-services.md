@@ -169,6 +169,11 @@ SetupClassifierPort
 DecisionCandidate
     ├──────────────→ RiskEnginePort
     └──────────────→ GovernanceEnginePort
+                         ▲
+                         │
+                 SessionPolicyEngine
+                         │
+                    UTC timestamp
                          ↓
              Decision layer (deferred contract)
                          ↓
