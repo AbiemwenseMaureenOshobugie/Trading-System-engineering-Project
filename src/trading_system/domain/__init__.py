@@ -1,4 +1,4 @@
-"""Domain models and contracts owned by the core system."""
+"""Canonical domain contracts."""
 
 from .enums import (
     ConfirmationType,
@@ -12,6 +12,7 @@ from .enums import (
     SwingKind,
     Timeframe,
 )
+from .journal import TradeJournalEntry
 from .models import (
     AuditRecord,
     ConfirmationSequence,
@@ -31,6 +32,7 @@ from .models import (
     RiskResult,
     SwingPoint,
 )
+from .performance import PerformanceSnapshot
 
 __all__ = [
     "AuditRecord",
@@ -39,7 +41,6 @@ __all__ = [
     "DecisionCandidate",
     "DecisionRequest",
     "DecisionResult",
-    "DecisionStatus",
     "Direction",
     "ExecutionRecord",
     "ExecutionState",
@@ -52,6 +53,7 @@ __all__ = [
     "MarketStructureState",
     "PaperFill",
     "PaperOrder",
+    "PerformanceSnapshot",
     "PriceZone",
     "Regime",
     "RiskRequest",
@@ -60,4 +62,5 @@ __all__ = [
     "SwingKind",
     "SwingPoint",
     "Timeframe",
+    "TradeJournalEntry",
 ]

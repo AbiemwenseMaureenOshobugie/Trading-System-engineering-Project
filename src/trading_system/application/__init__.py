@@ -15,6 +15,7 @@ from .ports import (
     MarketDataPort,
     RiskEnginePort,
     SetupClassifierPort,
+    TradeJournalPort,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "MarketDataPort",
     "RiskEnginePort",
     "SetupClassifierPort",
+    "TradeJournalPort",
 ]
