@@ -1,4 +1,4 @@
-# AI-Assisted, Governed Forex Trading System
+﻿# AI-Assisted, Governed Forex Trading System
 
 A serious, auditable Forex trading decision-support and eventual controlled-execution system built from a documented price-action methodology.
 
@@ -17,11 +17,11 @@ The system is not designed as a generic buy/sell predictor. Deterministic strate
 - **Confirmation processes:** CP-1 breakout/retest continuation and CP-2 key-level rejection, including its sweep variant.
 - **H1 regimes:** UPTREND, DOWNTREND, RANGE, TRANSITION, UNCLEAR.
 - **Minimum risk/reward:** 1:2.
-- **Risk guideline:** approximately 1–2% per trade.
+- **Risk guideline:** approximately 1â€“2% per trade.
 - **Daily trade limit:** maximum 2 trades.
 - **Loss control:** stop after 2 losses in a day.
 - **Session:** the defined session from the trading handbook.
-- **Initial operating path:** Observer → Decision Support → Paper Trading → Demo → Controlled Live.
+- **Initial operating path:** Observer â†’ Decision Support â†’ Paper Trading â†’ Demo â†’ Controlled Live.
 
 ## Engineering principles
 
@@ -38,17 +38,17 @@ The system is not designed as a generic buy/sell predictor. Deterministic strate
 
 ## Current development status
 
-**Milestone:** MS-0.7 — Execution Boundary / Paper Execution
+**Milestone:** MS-0.7 â€” Execution Boundary / Paper Execution
 
 **Status:** Complete
 
-**Current HEAD:** bf4bb15c25734a696bc87f4dbc34647df373e01e
+**Current HEAD:** b7e65434aa089cdcbec0b31bda75eac7c7c98af5
 
 **Test suite:** 88 passed
 
 **Completed milestones:** MS-0.1A through MS-0.7
 
-MS-0.7 establishes the execution boundary and deterministic paper-execution contract. Execution requires independent Decision, Risk, and Governance authorization; the canonical lifecycle is AUTHORIZED → SUBMITTED → FILLED or FAILED; paper execution uses explicit PaperOrder and PaperFill representations; paper fills use the requested entry price; and every canonical execution-state transition is auditable.
+MS-0.7 establishes the execution boundary and deterministic paper-execution contract. Execution requires independent Decision, Risk, and Governance authorization; the canonical lifecycle is AUTHORIZED â†’ SUBMITTED â†’ FILLED or FAILED; paper execution uses explicit PaperOrder and PaperFill representations; paper fills use the requested entry price; and every canonical execution-state transition is auditable.
 
 ## Planned evolution
 
@@ -69,39 +69,39 @@ Project documentation is treated as a first-class engineering artifact. Architec
 
 ```text
 .
-├── README.md
-├── pyproject.toml
-├── src/
-│   └── trading_system/
-│       ├── application/
-│       │   ├── __init__.py
-│       │   └── ports.py
-│       ├── domain/
-│       │   ├── enums.py
-│       │   └── models.py
-│       ├── data/
-│       ├── features/
-│       ├── strategy/
-│       │   ├── market_structure/
-│       │   ├── key_levels/
-│       │   └── confirmation/
-│       ├── risk/
-│       ├── governance/
-│       ├── decision/
-│       ├── execution/
-│       ├── audit/
-│       ├── analytics/
-│       ├── explanation/
-│       └── adapters/
-├── tests/
-│   ├── unit/
-│   │   ├── test_domain_models.py
-│   │   └── test_application_ports.py
-│   └── integration/
-└── docs/
-    └── architecture/
-        ├── application-services.md
-        └── ...
+â”œâ”€â”€ README.md
+â”œâ”€â”€ pyproject.toml
+â”œâ”€â”€ src/
+â”‚   â””â”€â”€ trading_system/
+â”‚       â”œâ”€â”€ application/
+â”‚       â”‚   â”œâ”€â”€ __init__.py
+â”‚       â”‚   â””â”€â”€ ports.py
+â”‚       â”œâ”€â”€ domain/
+â”‚       â”‚   â”œâ”€â”€ enums.py
+â”‚       â”‚   â””â”€â”€ models.py
+â”‚       â”œâ”€â”€ data/
+â”‚       â”œâ”€â”€ features/
+â”‚       â”œâ”€â”€ strategy/
+â”‚       â”‚   â”œâ”€â”€ market_structure/
+â”‚       â”‚   â”œâ”€â”€ key_levels/
+â”‚       â”‚   â””â”€â”€ confirmation/
+â”‚       â”œâ”€â”€ risk/
+â”‚       â”œâ”€â”€ governance/
+â”‚       â”œâ”€â”€ decision/
+â”‚       â”œâ”€â”€ execution/
+â”‚       â”œâ”€â”€ audit/
+â”‚       â”œâ”€â”€ analytics/
+â”‚       â”œâ”€â”€ explanation/
+â”‚       â””â”€â”€ adapters/
+â”œâ”€â”€ tests/
+â”‚   â”œâ”€â”€ unit/
+â”‚   â”‚   â”œâ”€â”€ test_domain_models.py
+â”‚   â”‚   â””â”€â”€ test_application_ports.py
+â”‚   â””â”€â”€ integration/
+â””â”€â”€ docs/
+    â””â”€â”€ architecture/
+        â”œâ”€â”€ application-services.md
+        â””â”€â”€ ...
 ```
 
 ## Development discipline
@@ -109,3 +109,4 @@ Project documentation is treated as a first-class engineering artifact. Architec
 The smallest working system is preferred over premature complexity. New modules, indicators, AI models, data sources, execution mechanisms, and risk rules require explicit methodological or engineering justification.
 
 MS-0.7 establishes the execution boundary and paper-execution contract. Further milestones will extend the system only through explicit, versioned decisions and controlled implementation batches.
+
