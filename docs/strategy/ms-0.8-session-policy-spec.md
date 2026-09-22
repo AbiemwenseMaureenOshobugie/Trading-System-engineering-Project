@@ -62,6 +62,26 @@ Derived properties:
 
 The session identity and `is_trading_permitted` field are authoritative. `reason` is explanatory only.
 
+## Governance Integration
+
+The `is_trading_permitted` result is supplied to Governance as the session-eligibility input. Session Policy does not itself authorize execution and does not replace Governance's other hard controls.
+
+The intended dependency is:
+
+```text
+SessionPolicyEngine
+        ↓
+instrument_session_eligible
+        ↓
+Governance
+        ↓
+Decision
+        ↓
+Execution
+```
+
+`session_identity` and `is_trading_permitted` are authoritative temporal-policy outputs. `reason` is explanatory and must not be used as the source of authorization semantics.
+
 ## Scope Exclusions
 
 MS-0.8 does not:
