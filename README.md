@@ -38,11 +38,17 @@ The system is not designed as a generic buy/sell predictor. Deterministic strate
 
 ## Current development status
 
-**Milestone:** MS-0.2 — System Architecture & Technical Design
+**Milestone:** MS-0.7 — Execution Boundary / Paper Execution
 
-**Current submilestone:** MS-0.2D — Application/Service Interfaces & Dependency Boundaries
+**Status:** Complete
 
-MS-0.2A established the component architecture and data/decision boundaries. MS-0.2B established the importable Python package structure. MS-0.2C established typed, immutable domain contracts without implementing trading behavior. MS-0.2D defines the application-layer ports, authority boundaries, dependency direction, and intentionally deferred contracts.
+**Current HEAD:** bf4bb15c25734a696bc87f4dbc34647df373e01e
+
+**Test suite:** 88 passed
+
+**Completed milestones:** MS-0.1A through MS-0.7
+
+MS-0.7 establishes the execution boundary and deterministic paper-execution contract. Execution requires independent Decision, Risk, and Governance authorization; the canonical lifecycle is AUTHORIZED → SUBMITTED → FILLED or FAILED; paper execution uses explicit PaperOrder and PaperFill representations; paper fills use the requested entry price; and every canonical execution-state transition is auditable.
 
 ## Planned evolution
 
@@ -102,4 +108,4 @@ Project documentation is treated as a first-class engineering artifact. Architec
 
 The smallest working system is preferred over premature complexity. New modules, indicators, AI models, data sources, execution mechanisms, and risk rules require explicit methodological or engineering justification.
 
-MS-0.2D defines application/service boundaries only. Deterministic trading behavior will be introduced incrementally in later milestones.
+MS-0.7 establishes the execution boundary and paper-execution contract. Further milestones will extend the system only through explicit, versioned decisions and controlled implementation batches.
