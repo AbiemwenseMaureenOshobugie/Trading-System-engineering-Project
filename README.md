@@ -38,17 +38,42 @@ The system is not designed as a generic buy/sell predictor. Deterministic strate
 
 ## Current development status
 
-**Milestone:** MS-0.7 â€” Execution Boundary / Paper Execution
+**Milestone:** MS-0.8 â€” Session / Time Policy Engine
 
 **Status:** Complete
 
-**Current HEAD:** b7e65434aa089cdcbec0b31bda75eac7c7c98af5
+**Current HEAD:** 8c705e738f48eac93688c94862be42c7cf5d5aa1
 
-**Test suite:** 88 passed
+**Verification:** MS-0.7 baseline reported 88 passed; MS-0.8 acceptance tests are present. Full-suite verification at the current HEAD is not yet claimed.
 
-**Completed milestones:** MS-0.1A through MS-0.7
+**Completed milestones:** MS-0.1A through MS-0.8
 
-MS-0.7 establishes the execution boundary and deterministic paper-execution contract. Execution requires independent Decision, Risk, and Governance authorization; the canonical lifecycle is AUTHORIZED â†’ SUBMITTED â†’ FILLED or FAILED; paper execution uses explicit PaperOrder and PaperFill representations; paper fills use the requested entry price; and every canonical execution-state transition is auditable.
+MS-0.8 establishes the deterministic session/time policy boundary. The Session Policy Engine classifies a UTC timestamp into the canonical session identity and produces a trading-eligibility result. Governance consumes that eligibility as an input to its hard operational permission checks. Session Policy does not modify strategy, risk, decision, or execution rules and does not introduce holiday or DST logic. The execution boundary established by MS-0.7 remains downstream of authorized Decision, Risk, and Governance results.
+
+## Current control flow
+
+The deterministic control path is:
+
+```text
+Strategy qualification
+        ↓
+Risk + Governance
+        ↓
+Decision
+        ↓
+Execution
+```
+
+Session Policy is a temporal eligibility provider to Governance rather than a downstream execution stage:
+
+```text
+                 Session Policy
+                       │
+                       ▼
+Strategy → Risk → Governance → Decision → Execution
+```
+
+Governance remains authoritative for operational permission. Session Policy supplies the session-eligibility input; it does not independently authorize execution.
 
 ## Planned evolution
 
@@ -89,6 +114,7 @@ Project documentation is treated as a first-class engineering artifact. Architec
 â”‚       â”œâ”€â”€ governance/
 â”‚       â”œâ”€â”€ decision/
 â”‚       â”œâ”€â”€ execution/
+â”‚       â”œâ”€â”€ session/
 â”‚       â”œâ”€â”€ audit/
 â”‚       â”œâ”€â”€ analytics/
 â”‚       â”œâ”€â”€ explanation/
@@ -108,5 +134,5 @@ Project documentation is treated as a first-class engineering artifact. Architec
 
 The smallest working system is preferred over premature complexity. New modules, indicators, AI models, data sources, execution mechanisms, and risk rules require explicit methodological or engineering justification.
 
-MS-0.7 establishes the execution boundary and paper-execution contract. Further milestones will extend the system only through explicit, versioned decisions and controlled implementation batches.
+MS-0.8 completes the current deterministic control pipeline by adding session eligibility as an explicit input to Governance. Further milestones will extend the system only through explicit, versioned decisions and controlled implementation batches.
 

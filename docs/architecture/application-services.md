@@ -52,6 +52,23 @@ These ports accept canonical domain models and return canonical domain models. T
 - `RiskEnginePort` — independent risk assessment.
 - `GovernanceEnginePort` — independent governance authorization.
 
+### Session Policy
+
+MS-0.8 introduces the Session Policy Engine as a deterministic temporal eligibility provider to Governance. It evaluates a timezone-aware UTC timestamp and returns the canonical session identity together with `is_trading_permitted`.
+
+The Session Policy Engine owns only session identity and session eligibility. It does not authorize execution, modify strategy qualification, calculate risk, apply holidays or DST adjustments, or contain AI/ML logic.
+
+Governance consumes the session eligibility result as one of its hard operational inputs. Therefore the architectural relationship is:
+
+```text
+                 Session Policy
+                       │
+                       ▼
+Strategy → Risk → Governance → Decision → Execution
+```
+
+Session Policy is a provider to Governance, not a downstream stage after Execution.
+
 The final typed decision outcome is deliberately deferred. No temporary `str`-based decision contract is exposed by the application port set. The future decision interface will be introduced only when its canonical domain semantics are formally specified.
 
 ### Execution port
@@ -105,7 +122,8 @@ The important rule is that dependencies point **toward abstractions and domain c
 | Confirmation | CP-1/CP-2 qualification | risk authorization |
 | Setup classifier | candidate construction | final permission to trade |
 | Risk | trade risk and geometry | methodology qualification |
-| Governance | hard operational permission | strategy interpretation |
+| Governance | hard operational permission, including session eligibility | strategy interpretation, session-time calculation |
+| Session Policy | UTC session identity and trading eligibility | strategy qualification, risk calculation, final execution authorization |
 | Decision | final system outcome once formally specified | broker-specific mechanics |
 | Execution | authorized order submission | changing strategy/risk/governance results |
 | Audit | evidence recording | changing authoritative state |
@@ -123,11 +141,13 @@ The important rule is that dependencies point **toward abstractions and domain c
 7. Execution must not reinterpret or silently modify the signal's immutable entry price or timestamp.
 8. Audit receives evidence from boundaries but cannot authorize, block, or alter a decision.
 9. Explanation and analytics are downstream consumers and cannot mutate authoritative decision state.
-10. AI/ML components, when introduced, must sit behind explicitly bounded interfaces and cannot bypass deterministic strategy, risk, governance, or execution controls.
-11. Shared domain models remain in `domain`; application ports must not introduce duplicate representations of the same concept.
-12. No interface may silently encode an unresolved methodology decision.
-13. No strategy engine may consume raw external-provider data.
-14. H1 structure evaluation must be bounded by an explicit evaluation cutoff and must not use candles after that boundary.
+10. Session Policy determines temporal eligibility only; Governance remains authoritative for operational permission.
+11. AI/ML components, when introduced, must sit behind explicitly bounded interfaces and cannot bypass deterministic strategy, risk, governance, or execution controls.
+12. Shared domain models remain in `domain`; application ports must not introduce duplicate representations of the same concept.
+13. No interface may silently encode an unresolved methodology decision.
+14. No strategy engine may consume raw external-provider data.
+15. H1 structure evaluation must be bounded by an explicit evaluation cutoff and must not use candles after that boundary.
+16. Session Policy must use the frozen UTC session contract and must not invent holiday, DST, weekend, or Asian-trading exceptions.
 
 ## 6. Call-flow boundary
 
@@ -149,6 +169,11 @@ SetupClassifierPort
 DecisionCandidate
     ├──────────────→ RiskEnginePort
     └──────────────→ GovernanceEnginePort
+                         ▲
+                         │
+                 SessionPolicyEngine
+                         │
+                    UTC timestamp
                          ↓
              Decision layer (deferred contract)
                          ↓
