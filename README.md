@@ -42,9 +42,9 @@ The system is not designed as a generic buy/sell predictor. Deterministic strate
 
 **Status:** Complete
 
-**Current HEAD:** ms-0.9 implementation branch
+**Current HEAD:** 1439b72f7af58c62081017aa0ad67900c1e2869b
 
-**Verification:** MS-0.9 acceptance tests are implemented. Full-suite verification at the current branch HEAD is not yet claimed.
+**Verification:** Pre-MS-0.9 signature review reported 105 passing tests. MS-0.9 adds 18 acceptance tests; no CI status is reported for the current HEAD.
 
 **Completed milestones:** MS-0.1A through MS-0.9
 
