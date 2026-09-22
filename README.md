@@ -38,17 +38,17 @@ The system is not designed as a generic buy/sell predictor. Deterministic strate
 
 ## Current development status
 
-**Milestone:** MS-0.8 â€” Session / Time Policy Engine
+**Milestone:** MS-0.9 â€” Journal / Performance Analytics
 
 **Status:** Complete
 
-**Current HEAD:** 867543c0e0dd0579fbff0f0985ec06d36b59470f
+**Current HEAD:** ms-0.9 implementation branch
 
-**Verification:** MS-0.7 baseline reported 88 passed; MS-0.8 acceptance tests are present. Full-suite verification at the current HEAD is not yet claimed.
+**Verification:** MS-0.9 acceptance tests are implemented. Full-suite verification at the current branch HEAD is not yet claimed.
 
-**Completed milestones:** MS-0.1A through MS-0.8
+**Completed milestones:** MS-0.1A through MS-0.9
 
-MS-0.8 establishes the deterministic session/time policy boundary. The Session Policy Engine classifies a UTC timestamp into the canonical session identity and produces a trading-eligibility result. Governance consumes that eligibility as an input to its hard operational permission checks. Session Policy does not modify strategy, risk, decision, or execution rules and does not introduce holiday or DST logic. The execution boundary established by MS-0.7 remains downstream of authorized Decision, Risk, and Governance results.
+MS-0.9 introduces the deterministic journal and descriptive performance-analytics boundary. Completed trade outcomes are represented as immutable journal entries; analytics aggregates supplied realized P&L into deterministic descriptive metrics. The journal and analytics layers do not authorize, mutate, or reinterpret Strategy, Risk, Governance, Decision, Execution, or Session Policy state.
 
 ## Current control flow
 
@@ -115,6 +115,7 @@ Project documentation is treated as a first-class engineering artifact. Architec
 â”‚       â”œâ”€â”€ decision/
 â”‚       â”œâ”€â”€ execution/
 â”‚       â”œâ”€â”€ session/
+â”‚       â”œâ”€â”€ journal/
 â”‚       â”œâ”€â”€ audit/
 â”‚       â”œâ”€â”€ analytics/
 â”‚       â”œâ”€â”€ explanation/
@@ -134,5 +135,5 @@ Project documentation is treated as a first-class engineering artifact. Architec
 
 The smallest working system is preferred over premature complexity. New modules, indicators, AI models, data sources, execution mechanisms, and risk rules require explicit methodological or engineering justification.
 
-MS-0.8 completes the current deterministic control pipeline by adding session eligibility as an explicit input to Governance. Further milestones will extend the system only through explicit, versioned decisions and controlled implementation batches.
+MS-0.9 extends the completed deterministic control pipeline with an observational journal and performance-analytics layer. These components describe completed outcomes without becoming a source of trading authority. Further milestones will extend the system only through explicit, versioned decisions and controlled implementation batches.
 
