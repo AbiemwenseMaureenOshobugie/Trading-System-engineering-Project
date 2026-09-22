@@ -44,7 +44,7 @@ The system is not designed as a generic buy/sell predictor. Deterministic strate
 
 **Current HEAD:** 8c705e738f48eac93688c94862be42c7cf5d5aa1
 
-**Test suite:** 88 passed
+**Verification:** MS-0.7 baseline reported 88 passed; MS-0.8 acceptance tests are present. Full-suite verification at the current HEAD is not yet claimed.
 
 **Completed milestones:** MS-0.1A through MS-0.8
 
@@ -114,6 +114,7 @@ Project documentation is treated as a first-class engineering artifact. Architec
 â”‚       â”œâ”€â”€ governance/
 â”‚       â”œâ”€â”€ decision/
 â”‚       â”œâ”€â”€ execution/
+â”‚       â”œâ”€â”€ session/
 â”‚       â”œâ”€â”€ audit/
 â”‚       â”œâ”€â”€ analytics/
 â”‚       â”œâ”€â”€ explanation/
