@@ -42,7 +42,7 @@ The system is not designed as a generic buy/sell predictor. Deterministic strate
 
 **Status:** Complete
 
-**Current HEAD:** 8c705e738f48eac93688c94862be42c7cf5d5aa1
+**Current HEAD:** 867543c0e0dd0579fbff0f0985ec06d36b59470f
 
 **Verification:** MS-0.7 baseline reported 88 passed; MS-0.8 acceptance tests are present. Full-suite verification at the current HEAD is not yet claimed.
 
