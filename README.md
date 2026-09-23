@@ -38,42 +38,36 @@ The system is not designed as a generic buy/sell predictor. Deterministic strate
 
 ## Current development status
 
-**Milestone:** MS-0.9 â€” Journal / Performance Analytics
+**Milestone:** MS-0.9 — Journal / Performance Analytics
 
 **Status:** Complete
 
-**Current HEAD:** 1439b72f7af58c62081017aa0ad67900c1e2869b
+**Current main:** PR #8 merged; MS-0.9 is corrected and complete.
 
-**Verification:** Pre-MS-0.9 signature review reported 105 passing tests. MS-0.9 adds 18 acceptance tests; no CI status is reported for the current HEAD.
+**Verification:** 124 tests passing.
 
 **Completed milestones:** MS-0.1A through MS-0.9
 
-MS-0.9 introduces the deterministic journal and descriptive performance-analytics boundary. Completed trade outcomes are represented as immutable journal entries; analytics aggregates supplied realized P&L into deterministic descriptive metrics. The journal and analytics layers do not authorize, mutate, or reinterpret Strategy, Risk, Governance, Decision, Execution, or Session Policy state.
+MS-0.9 establishes the deterministic journal and descriptive performance-analytics boundary. Completed trade outcomes are represented as immutable journal entries; analytics aggregates supplied realized P&L into deterministic descriptive metrics. The journal and analytics layers do not authorize, mutate, or reinterpret Strategy, Risk, Governance, Decision, Execution, or Session Policy state.
 
-## Current control flow
+### Current open items
 
-The deterministic control path is:
+| Item | Status |
+|---|---|
+| Independent Prior High/Low (K-04 old) | 🟡 Unresolved |
+| MT5/Broker integration | ⏸️ Deferred |
+| Live execution | ⏸️ Deferred |
+| Partial fills | ⏸️ Deferred |
+| Cancellations | ⏸️ Deferred |
+| Retry/recovery | ⏸️ Deferred |
+| Reconciliation | ⏸️ Deferred |
+| Exit execution contract | ⏳ New gap; planned for MS-0.10 |
 
-```text
-Strategy qualification
-        ↓
-Risk + Governance
-        ↓
-Decision
-        ↓
-Execution
-```
+### MS-0.10 dependency
 
-Session Policy is a temporal eligibility provider to Governance rather than a downstream execution stage:
+The MS-0.9 journal schema now records actual exit-execution fields, but MS-0.9 deliberately does not invent an exit mechanism. The entry-execution contract exists in MS-0.7; an equivalent exit-execution contract does not yet exist.
 
-```text
-                 Session Policy
-                       │
-                       ▼
-Strategy → Risk → Governance → Decision → Execution
-```
-
-Governance remains authoritative for operational permission. Session Policy supplies the session-eligibility input; it does not independently authorize execution.
+**MS-0.10 — Exit Execution Contract** is therefore the next execution-contract milestone. It depends on the MS-0.7 entry-execution boundary and the MS-0.9 journal schema. Until that contract is defined and implemented, the journal remains a schema/analytics boundary rather than an exit-generation mechanism.
 
 ## Planned evolution
 

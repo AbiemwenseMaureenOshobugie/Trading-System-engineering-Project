@@ -93,7 +93,29 @@ The system will progress through controlled stages:
 4. **Demo** — integrate with MT5 under controlled conditions.
 5. **Controlled Live** — only after sufficient validation, governance approval, and operational readiness.
 
-## 6. Architectural constraints
+## 6. Current milestone boundary
+
+MS-0.9 is complete. The system now has an observational journal and deterministic descriptive performance analytics layer.
+
+The journal records completed trade outcomes from execution evidence. It does **not** create an exit, infer missing exit data, or authorize execution.
+
+The current execution boundary is therefore asymmetric:
+
+```text
+Entry:
+Decision → Risk + Governance → Execution → Paper/Broker Fill
+
+Exit:
+Exit-execution contract not yet defined
+        ↓
+Journal schema can record exit evidence once supplied
+        ↓
+Analytics consumes completed journal entries
+```
+
+The missing exit-execution contract is a deliberate open architectural item. It is planned as **MS-0.10** and must be specified before ASTER treats exits as an execution-controlled mechanism.
+
+## 7. Architectural constraints
 
 - Strategy rules must be deterministic and testable.
 - Risk Engine must be independent of Strategy Engine.
