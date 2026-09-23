@@ -16,7 +16,7 @@ from trading_system.domain import (
     DecisionCandidate,
     DecisionRequest,
     DecisionResult,
-    ExecutionRecord,
+    ExecutionRecord, ExitExecutionRecord, ExitInstruction,
     GovernanceRequest,
     GovernanceResult,
     KeyLevel,
@@ -122,6 +122,11 @@ class TradeJournalPort(Protocol):
 
 
 @runtime_checkable
+class ExitExecutionPort(Protocol):
+    """Submit an authorized exit instruction for an existing open position."""
+    def submit(self, *, instruction: ExitInstruction) -> ExitExecutionRecord: ...
+
+@runtime_checkable
 class AuditPort(Protocol):
     """Record material boundary events without owning business rules."""
 
@@ -133,7 +138,7 @@ __all__ = [
     "TradeJournalPort",
     "ConfirmationEnginePort",
     "DecisionEnginePort",
-    "ExecutionPort",
+    "ExecutionPort", "ExitExecutionPort",
     "GovernanceEnginePort",
     "H1MarketStructurePort",
     "KeyLevelEnginePort",
