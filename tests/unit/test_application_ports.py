@@ -12,6 +12,7 @@ from trading_system.application import (
     MarketDataPort,
     RiskEnginePort,
     SetupClassifierPort,
+    TradeJournalPort,
 )
 from trading_system.domain import (
     DecisionResult,
@@ -129,6 +130,17 @@ class Audit:
         return None
 
 
+class Journal:
+    def __init__(self):
+        self._entries = ()
+
+    def append(self, entry):
+        self._entries = (*self._entries, entry)
+
+    def entries(self):
+        return self._entries
+
+
 def test_ports_are_runtime_compatible_with_structural_implementations():
     implementations = [
         (MarketDataPort, DataAdapter()),
@@ -141,6 +153,7 @@ def test_ports_are_runtime_compatible_with_structural_implementations():
         (DecisionEnginePort, Decision()),
         (ExecutionPort, Execution()),
         (AuditPort, Audit()),
+        (TradeJournalPort, Journal()),
     ]
 
     for protocol, implementation in implementations:

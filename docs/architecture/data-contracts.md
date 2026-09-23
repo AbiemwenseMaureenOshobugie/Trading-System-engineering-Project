@@ -148,23 +148,21 @@ Fields:
 
 The model records governance outcomes; it does not itself implement the maximum-trades, loss-stop, instrument, or session rules.
 
-## 9. Execution Record
+## 9. Execution and Exit Contracts
 
-Python model: `ExecutionRecord`
+MS-0.7 entry execution remains separate from signal state. Its canonical
+entry lifecycle is AUTHORIZED → SUBMITTED → FILLED / FAILED.
 
-Fields:
+MS-0.10 adds:
+- Position: actual open position created from entry execution evidence.
+- ExitInstruction: position/provenance, STOP_LOSS or TARGET, quantity, trigger
+  price, creation time, and source reference.
+- ExitExecutionRecord: CREATED → AUTHORIZED → SUBMITTED → FILLED / FAILED.
+- ExitPaperFill: actual exit price, executed quantity, and execution timestamp.
 
-- `decision_id`
-- `order_submission_timestamp`
-- broker order ID
-- requested order details
-- execution timestamp
-- `execution_entry_price`
-- executed quantity
-- slippage
-- broker status
-
-Execution remains separate from the strategy signal. A broker fill must not overwrite `signal_entry_price` or `signal_timestamp` in a `DecisionCandidate`.
+Risk geometry supplies STOP_LOSS and TARGET trigger prices. Actual exit price
+and timestamp come only from exit execution evidence. FAILED exits have no fill
+evidence and do not complete the journal.
 
 ## 10. Audit Record
 

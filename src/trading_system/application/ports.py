@@ -10,12 +10,13 @@ from datetime import datetime
 from typing import Protocol, Sequence, runtime_checkable
 
 from trading_system.domain import (
+    TradeJournalEntry,
     AuditRecord,
     ConfirmationSequence,
     DecisionCandidate,
     DecisionRequest,
     DecisionResult,
-    ExecutionRecord,
+    ExecutionRecord, ExitExecutionRecord, ExitInstruction,
     GovernanceRequest,
     GovernanceResult,
     KeyLevel,
@@ -112,6 +113,20 @@ class ExecutionPort(Protocol):
 
 
 @runtime_checkable
+class TradeJournalPort(Protocol):
+    """Append and retrieve immutable completed-trade journal entries."""
+
+    def append(self, entry: TradeJournalEntry) -> None: ...
+
+    def entries(self) -> tuple[TradeJournalEntry, ...]: ...
+
+
+@runtime_checkable
+class ExitExecutionPort(Protocol):
+    """Submit an authorized exit instruction for an existing open position."""
+    def submit(self, *, instruction: ExitInstruction) -> ExitExecutionRecord: ...
+
+@runtime_checkable
 class AuditPort(Protocol):
     """Record material boundary events without owning business rules."""
 
@@ -120,9 +135,10 @@ class AuditPort(Protocol):
 
 __all__ = [
     "AuditPort",
+    "TradeJournalPort",
     "ConfirmationEnginePort",
     "DecisionEnginePort",
-    "ExecutionPort",
+    "ExecutionPort", "ExitExecutionPort",
     "GovernanceEnginePort",
     "H1MarketStructurePort",
     "KeyLevelEnginePort",

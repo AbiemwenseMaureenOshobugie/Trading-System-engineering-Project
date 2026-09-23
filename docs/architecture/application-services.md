@@ -73,15 +73,21 @@ The final typed decision outcome is deliberately deferred. No temporary `str`-ba
 
 ### Execution port
 
-`ExecutionPort` is the only application boundary through which an authorized decision may reach an external execution adapter.
+`ExecutionPort` is the controlled boundary for authorized entry execution.
+Entry execution verifies Decision, Risk, and Governance authorization.
 
-The interface receives the candidate together with the Risk and Governance results so the concrete execution boundary can verify that both control results are present and authorized before submission. A rejected or blocked control result must never be submitted to a broker.
+Exit execution consumes an authorized `ExitInstruction` tied to an actual
+open position. It does not rerun the entry authorization cycle. Execution
+produces actual fill evidence and does not own strategy, risk, governance, or
+exit-geometry rules.
 
-The port does not own strategy rules and must not reinterpret or silently modify the candidate's immutable signal timestamp or signal entry price. Broker submission and broker fill remain separate execution events.
+### Journal and analytics ports
 
-### Audit port
+`TradeJournalPort` records immutable completed-trade outcomes. It does not
+authorize trades, create exits, or infer missing execution evidence.
 
-`AuditPort` records material events. Audit is a cross-cutting boundary and does not own strategy, risk, governance, or execution authority.
+MS-0.10 supplies the missing exit-execution evidence upstream of MS-0.9.
+A completed journal entry requires actual entry and exit execution evidence.
 
 ## 3. Dependency direction
 
@@ -128,7 +134,8 @@ The important rule is that dependencies point **toward abstractions and domain c
 | Execution | authorized order submission | changing strategy/risk/governance results |
 | Audit | evidence recording | changing authoritative state |
 | Explanation | human-readable interpretation of recorded evidence | changing decisions |
-| Analytics | replay/performance analysis | live decision mutation |
+| Journal | immutable completed-trade outcome records | authorization, exit inference, state mutation |
+| Analytics | deterministic descriptive performance analysis | live decision mutation, strategy/risk/governance changes |
 
 ## 5. Dependency rules
 
@@ -140,7 +147,7 @@ The important rule is that dependencies point **toward abstractions and domain c
 6. Execution is downstream of **authorized Risk and Governance results** and must reject anything else at the execution boundary.
 7. Execution must not reinterpret or silently modify the signal's immutable entry price or timestamp.
 8. Audit receives evidence from boundaries but cannot authorize, block, or alter a decision.
-9. Explanation and analytics are downstream consumers and cannot mutate authoritative decision state.
+9. Explanation, journal, and analytics are downstream/observational consumers and cannot mutate authoritative decision state.
 10. Session Policy determines temporal eligibility only; Governance remains authoritative for operational permission.
 11. AI/ML components, when introduced, must sit behind explicitly bounded interfaces and cannot bypass deterministic strategy, risk, governance, or execution controls.
 12. Shared domain models remain in `domain`; application ports must not introduce duplicate representations of the same concept.
@@ -193,7 +200,7 @@ The following are intentionally not fully specified in MS-0.2D because the corre
 - concrete normalization result beyond canonical candles;
 - final typed decision outcome and decision port;
 - explanation request/result contract;
-- analytics/backtest service contract;
+- future backtest/replay service contract;
 - concrete broker/MT5 adapter contract;
 - persistence/repository interfaces.
 
@@ -204,6 +211,8 @@ Deferral is deliberate. The project should not manufacture abstractions before t
 MS-0.2D tests verify that the ports are importable and structurally usable by compatible implementations, and that the H1 boundary requires an explicit evaluation cutoff. Behavioral strategy tests belong to later milestones when the corresponding engines are implemented.
 
 Execution implementations must additionally enforce authorized Risk and Governance results before any broker submission. Signal/execution separation is a domain invariant and should be protected by later architecture/integration tests.
+
+MS-0.9 establishes the journal and descriptive performance analytics contracts without connecting analytics back into the live authorization path.
 
 ## 9. Milestone exit condition
 

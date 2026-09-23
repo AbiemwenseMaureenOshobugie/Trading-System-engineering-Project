@@ -40,13 +40,22 @@ Applies non-negotiable controls such as maximum two trades per day, stop after t
 Combines strategy qualification, risk authorization, and governance authorization into a final system outcome such as VALID, WAIT, or BLOCKED, with distinct risk and governance failure reasons.
 
 ### Execution Gateway
-Future boundary between an authorized decision and MT5/broker order submission. It must never accept an unapproved strategy candidate directly.
+
+The Execution Gateway is the controlled boundary between authorized execution
+instructions and broker/MT5 adapters.
+
+Entry execution consumes Decision + Risk + Governance authorization.
+Exit execution consumes an authorized exit instruction tied to an open
+position and produces exit execution evidence. It does not create a new
+strategy signal or rerun entry authorization.
 
 ### Audit / Journal
 Persists input observations, strategy version, rule evaluations, decisions, risk results, governance results, signals, execution records, and post-trade outcomes.
 
 ### Analytics / Backtest Engine
-Replays historical data through the same deterministic logic and produces performance metrics while enforcing chronological integrity and avoiding look-ahead bias.
+
+Consumes completed journal records and produces descriptive performance
+metrics. It does not alter live decision state.
 
 ### Explanation Layer
 Produces human-readable explanations from recorded deterministic evidence. An LLM may assist here later, but explanation must not mutate the authoritative decision state.

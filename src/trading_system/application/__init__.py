@@ -8,24 +8,26 @@ from .ports import (
     AuditPort,
     ConfirmationEnginePort,
     DecisionEnginePort,
-    ExecutionPort,
+    ExecutionPort, ExitExecutionPort,
     GovernanceEnginePort,
     H1MarketStructurePort,
     KeyLevelEnginePort,
     MarketDataPort,
     RiskEnginePort,
     SetupClassifierPort,
+    TradeJournalPort,
 )
 
 __all__ = [
     "AuditPort",
     "ConfirmationEnginePort",
     "DecisionEnginePort",
-    "ExecutionPort",
+    "ExecutionPort", "ExitExecutionPort",
     "GovernanceEnginePort",
     "H1MarketStructurePort",
     "KeyLevelEnginePort",
     "MarketDataPort",
     "RiskEnginePort",
     "SetupClassifierPort",
+    "TradeJournalPort",
 ]

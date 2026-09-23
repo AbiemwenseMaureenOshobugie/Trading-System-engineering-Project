@@ -15,6 +15,8 @@ from .enums import (
     DecisionStatus,
     Direction,
     ExecutionState,
+    ExitExecutionState,
+    ExitType,
     GovernanceStatus,
     KeyLevelSource,
     Regime,
@@ -285,3 +287,60 @@ class AuditRecord:
     decision_id: Optional[str]
     payload_refs: tuple[str, ...]
     outcome: Optional[str]
+
+
+@dataclass(frozen=True, slots=True)
+class Position:
+    """Open position created from an actual entry execution."""
+    position_id: str
+    decision_id: str
+    entry_execution_id: str
+    symbol: str
+    direction: Direction
+    open_quantity: Decimal
+    entry_execution_price: Decimal
+    entry_execution_timestamp: datetime
+    def __post_init__(self) -> None:
+        if self.open_quantity <= 0: raise ValueError("open_quantity must be positive")
+        if self.entry_execution_timestamp.tzinfo is None: raise ValueError("entry_execution_timestamp must be timezone-aware")
+
+@dataclass(frozen=True, slots=True)
+class ExitInstruction:
+    """Authorized instruction to close an existing position."""
+    exit_instruction_id: str
+    position_id: str
+    decision_id: str
+    symbol: str
+    direction: Direction
+    exit_type: ExitType
+    requested_quantity: Decimal
+    trigger_price: Decimal
+    created_timestamp: datetime
+    source_reference: str
+    def __post_init__(self) -> None:
+        if self.requested_quantity <= 0: raise ValueError("requested_quantity must be positive")
+        if self.created_timestamp.tzinfo is None: raise ValueError("created_timestamp must be timezone-aware")
+
+@dataclass(frozen=True, slots=True)
+class ExitPaperFill:
+    """Deterministic paper exit execution evidence."""
+    exit_fill_id: str
+    exit_instruction_id: str
+    actual_exit_price: Decimal
+    executed_quantity: Decimal
+    exit_execution_timestamp: datetime
+    def __post_init__(self) -> None:
+        if self.executed_quantity <= 0: raise ValueError("executed_quantity must be positive")
+        if self.exit_execution_timestamp.tzinfo is None: raise ValueError("exit_execution_timestamp must be timezone-aware")
+
+@dataclass(frozen=True, slots=True)
+class ExitExecutionRecord:
+    """Immutable exit execution outcome."""
+    exit_execution_id: str
+    position_id: str
+    decision_id: str
+    state: ExitExecutionState
+    instruction: ExitInstruction
+    fill: Optional[ExitPaperFill]
+    failure_reason: Optional[str]
+    failure_timestamp: Optional[datetime]
