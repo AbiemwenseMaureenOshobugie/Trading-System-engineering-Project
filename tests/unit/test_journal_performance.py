@@ -20,12 +20,12 @@ def entry(
     offset_minutes: int = 0,
     entry_offset: int = 0,
 ) -> TradeJournalEntry:
-    opened = BASE + timedelta(minutes=entry_offset)
+    entry_time = BASE + timedelta(minutes=entry_offset)
     exit_time = BASE + timedelta(minutes=offset_minutes)
     return TradeJournalEntry(
         journal_id=journal_id,
         decision_id=f"D-{journal_id}",
-        entry_entry_execution_id=f"ENTRY-{journal_id}", exit_execution_id=f"EXIT-{journal_id}",
+        entry_execution_id=f"ENTRY-{journal_id}", exit_execution_id=f"EXIT-{journal_id}",
         strategy_version="MS-0.1.0",
         symbol="EURUSD",
         direction=Direction.BUY,
@@ -50,7 +50,8 @@ def test_ms09_t02_naive_timestamps_are_rejected() -> None:
         TradeJournalEntry(
             journal_id="J-1",
             decision_id="D-1",
-            entry_execution_id="E-1",
+            entry_execution_id="ENTRY-1",
+            exit_execution_id="EXIT-1",
             strategy_version="MS-0.1.0",
             symbol="EURUSD",
             direction=Direction.BUY,
