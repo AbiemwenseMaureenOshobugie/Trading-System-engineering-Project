@@ -81,7 +81,11 @@ The port does not own strategy rules and must not reinterpret or silently modify
 
 ### Journal and analytics ports
 
-`TradeJournalPort` records and retrieves immutable completed-trade outcomes. It is observational: it does not authorize trades, create exits, or modify execution state.
+`TradeJournalPort` records and retrieves immutable completed-trade outcomes. It is observational: it does not authorize trades, create exits, infer missing exit data, or modify execution state.
+
+MS-0.9 defines the canonical journal fields for actual entry and exit execution evidence. The journal's exit fields are populated by an upstream execution mechanism; MS-0.9 does not define that mechanism.
+
+The exit-execution contract is therefore explicitly deferred to **MS-0.10**. Until that contract exists, ASTER must not treat the journal schema as an exit-generation or exit-authorization interface.
 
 The MS-0.9 performance analytics service consumes completed journal entries and produces descriptive aggregate metrics. It does not infer missing outcomes, mutate journal entries, or feed decisions back into the trading-control path.
 
@@ -201,7 +205,7 @@ The following are intentionally not fully specified in MS-0.2D because the corre
 - final typed decision outcome and decision port;
 - explanation request/result contract;
 - future backtest/replay service contract;
-- concrete broker/MT5 adapter contract;
+- exit-execution contract (planned MS-0.10);\n- concrete broker/MT5 adapter contract;
 - persistence/repository interfaces.
 
 Deferral is deliberate. The project should not manufacture abstractions before their semantics are needed.
