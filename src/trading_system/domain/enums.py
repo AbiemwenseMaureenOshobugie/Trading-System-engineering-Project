@@ -61,3 +61,15 @@ class ExecutionState(StrEnum):
     SUBMITTED = "SUBMITTED"
     FILLED = "FILLED"
     FAILED = "FAILED"
+
+
+class ExitType(StrEnum):
+    STOP_LOSS = "STOP_LOSS"
+    TARGET = "TARGET"
+
+class ExitExecutionState(StrEnum):
+    CREATED = "CREATED"
+    AUTHORIZED = "AUTHORIZED"
+    SUBMITTED = "SUBMITTED"
+    FILLED = "FILLED"
+    FAILED = "FAILED"
