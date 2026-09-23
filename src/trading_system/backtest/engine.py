@@ -71,6 +71,10 @@ class BacktestEngine:
         future_violations: list[str] = []
         ordering_violations: list[str] = []
         seen_decisions: set[str] = set()
+        valid_decisions = 0
+        wait_decisions = 0
+        risk_rejections = 0
+        governance_blocks = 0
         daily_trade_count = 0
         daily_loss_count = 0
 
@@ -104,13 +108,17 @@ class BacktestEngine:
                 seen_decisions.add(item.candidate.decision_id)
 
                 if item.decision.status.value == "WAIT":
+                    wait_decisions += 1
                     continue
                 if item.decision.status.value == "RISK_REJECTED":
+                    risk_rejections += 1
                     continue
                 if item.decision.status.value == "GOVERNANCE_BLOCKED":
+                    governance_blocks += 1
                     continue
                 if item.decision.status.value != "VALID":
                     continue
+                valid_decisions += 1
 
                 execution = self._entry_execution.submit(
                     candidate=item.candidate,
@@ -233,10 +241,10 @@ class BacktestEngine:
             ambiguous_execution_events=tuple(ambiguous),
             performance=performance,
             strategy_candidates=len(seen_decisions),
-            valid_decisions=valid,
-            wait_decisions=0,
-            risk_rejections=0,
-            governance_blocks=0,
+            valid_decisions=valid_decisions,
+            wait_decisions=wait_decisions,
+            risk_rejections=risk_rejections,
+            governance_blocks=governance_blocks,
             executed_entries=len(entries),
             completed_trade_count=len(completed_trades),
             ambiguous_executions=len(ambiguous),
