@@ -74,7 +74,8 @@ def test_ms09_t04_non_positive_quantity_is_rejected() -> None:
         TradeJournalEntry(
             journal_id="J-1",
             decision_id="D-1",
-            entry_execution_id="E-1",
+            entry_execution_id="ENTRY-1",
+            exit_execution_id="EXIT-1",
             strategy_version="MS-0.1.0",
             symbol="EURUSD",
             direction=Direction.BUY,
