@@ -1,4 +1,4 @@
-"""Deterministic descriptive performance analytics for MS-0.9."""
+﻿"""Deterministic descriptive performance analytics for MS-0.9."""
 
 from decimal import Decimal
 
@@ -14,7 +14,7 @@ class PerformanceAnalytics:
     def calculate(
         entries: tuple[TradeJournalEntry, ...] | list[TradeJournalEntry],
     ) -> PerformanceSnapshot:
-        ordered = tuple(sorted(entries, key=lambda item: (item.closed_at, item.journal_id)))
+        ordered = tuple(sorted(entries, key=lambda item: (item.exit_execution_timestamp, item.journal_id)))
         total = len(ordered)
 
         if total == 0:
@@ -78,3 +78,4 @@ class PerformanceAnalytics:
             max_consecutive_losses=max_consecutive_losses,
             expectancy=average,
         )
+

@@ -18,28 +18,28 @@ def entry(
     pnl: str,
     *,
     offset_minutes: int = 0,
-    opened_offset: int = 0,
+    entry_offset: int = 0,
 ) -> TradeJournalEntry:
-    opened = BASE + timedelta(minutes=opened_offset)
-    closed = BASE + timedelta(minutes=offset_minutes)
+    entry_time = BASE + timedelta(minutes=entry_offset)
+    exit_time = BASE + timedelta(minutes=offset_minutes)
     return TradeJournalEntry(
         journal_id=journal_id,
         decision_id=f"D-{journal_id}",
-        execution_id=f"E-{journal_id}",
+        entry_execution_id=f"ENTRY-{journal_id}", exit_execution_id=f"EXIT-{journal_id}",
         strategy_version="MS-0.1.0",
         symbol="EURUSD",
         direction=Direction.BUY,
-        quantity=Decimal("1"),
-        entry_price=Decimal("1.1000"),
-        exit_price=Decimal("1.1010"),
-        opened_at=opened,
-        closed_at=closed,
+        executed_quantity=Decimal("1"),
+        entry_execution_price=Decimal("1.1000"),
+        exit_execution_price=Decimal("1.1010"),
+        entry_execution_timestamp=entry_time,
+        exit_execution_timestamp=exit_time,
         realized_pnl=Decimal(pnl),
     )
 
 
 def test_ms09_t01_journal_entry_is_immutable_and_accepted() -> None:
-    item = entry("J-1", "10", offset_minutes=10, opened_offset=5)
+    item = entry("J-1", "10", offset_minutes=10, entry_offset=5)
     assert item.realized_pnl == Decimal("10")
     with pytest.raises(AttributeError):
         item.realized_pnl = Decimal("20")  # type: ignore[misc]
@@ -50,38 +50,40 @@ def test_ms09_t02_naive_timestamps_are_rejected() -> None:
         TradeJournalEntry(
             journal_id="J-1",
             decision_id="D-1",
-            execution_id="E-1",
+            entry_execution_id="ENTRY-1",
+            exit_execution_id="EXIT-1",
             strategy_version="MS-0.1.0",
             symbol="EURUSD",
             direction=Direction.BUY,
-            quantity=Decimal("1"),
-            entry_price=Decimal("1.1"),
-            exit_price=Decimal("1.2"),
-            opened_at=datetime(2026, 9, 1, 8),
-            closed_at=BASE,
+            executed_quantity=Decimal("1"),
+            entry_execution_price=Decimal("1.1"),
+            exit_execution_price=Decimal("1.2"),
+            entry_execution_timestamp=datetime(2026, 9, 1, 8),
+            exit_execution_timestamp=BASE,
             realized_pnl=Decimal("1"),
         )
 
 
 def test_ms09_t03_close_before_open_is_rejected() -> None:
-    with pytest.raises(ValueError, match="closed_at"):
-        entry("J-1", "1", offset_minutes=5, opened_offset=10)
+    with pytest.raises(ValueError, match="exit_execution_timestamp"):
+        entry("J-1", "1", offset_minutes=5, entry_offset=10)
 
 
 def test_ms09_t04_non_positive_quantity_is_rejected() -> None:
-    with pytest.raises(ValueError, match="quantity"):
+    with pytest.raises(ValueError, match="executed_quantity"):
         TradeJournalEntry(
             journal_id="J-1",
             decision_id="D-1",
-            execution_id="E-1",
+            entry_execution_id="ENTRY-1",
+            exit_execution_id="EXIT-1",
             strategy_version="MS-0.1.0",
             symbol="EURUSD",
             direction=Direction.BUY,
-            quantity=Decimal("0"),
-            entry_price=Decimal("1.1"),
-            exit_price=Decimal("1.2"),
-            opened_at=BASE,
-            closed_at=BASE,
+            executed_quantity=Decimal("0"),
+            entry_execution_price=Decimal("1.1"),
+            exit_execution_price=Decimal("1.2"),
+            entry_execution_timestamp=BASE,
+            exit_execution_timestamp=BASE,
             realized_pnl=Decimal("1"),
         )
 
@@ -207,3 +209,12 @@ def test_ms09_t18_analytics_has_no_strategy_or_execution_authority() -> None:
     assert not hasattr(PerformanceAnalytics, "authorize")
     assert not hasattr(PerformanceAnalytics, "submit")
     assert not hasattr(PerformanceAnalytics, "decide")
+
+
+def test_ms09_t19_journal_columns_are_execution_semantic_not_signal_semantic() -> None:
+    item = entry("J-1", "10", offset_minutes=10, entry_offset=5)
+    assert item.entry_execution_price == Decimal("1.1000")
+    assert item.exit_execution_price == Decimal("1.1010")
+    assert item.entry_execution_timestamp < item.exit_execution_timestamp
+    assert item.entry_execution_id == "ENTRY-J-1"
+    assert item.exit_execution_id == "EXIT-J-1"
