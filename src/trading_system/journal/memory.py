@@ -1,4 +1,4 @@
-"""Deterministic in-memory trade journal for MS-0.9."""
+﻿"""Deterministic in-memory trade journal for MS-0.9."""
 
 from trading_system.domain import TradeJournalEntry
 
@@ -18,6 +18,7 @@ class InMemoryTradeJournal:
         return tuple(
             sorted(
                 self._entries.values(),
-                key=lambda item: (item.closed_at, item.journal_id),
+                key=lambda item: (item.exit_execution_timestamp, item.journal_id),
             )
         )
+
