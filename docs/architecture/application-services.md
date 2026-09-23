@@ -73,21 +73,21 @@ The final typed decision outcome is deliberately deferred. No temporary `str`-ba
 
 ### Execution port
 
-`ExecutionPort` is the only application boundary through which an authorized decision may reach an external execution adapter.
+`ExecutionPort` is the controlled boundary for authorized entry execution.
+Entry execution verifies Decision, Risk, and Governance authorization.
 
-The interface receives the candidate together with the Risk and Governance results so the concrete execution boundary can verify that both control results are present and authorized before submission. A rejected or blocked control result must never be submitted to a broker.
-
-The port does not own strategy rules and must not reinterpret or silently modify the candidate's immutable signal timestamp or signal entry price. Broker submission and broker fill remain separate execution events.
+Exit execution consumes an authorized `ExitInstruction` tied to an actual
+open position. It does not rerun the entry authorization cycle. Execution
+produces actual fill evidence and does not own strategy, risk, governance, or
+exit-geometry rules.
 
 ### Journal and analytics ports
 
-`TradeJournalPort` records and retrieves immutable completed-trade outcomes. It is observational: it does not authorize trades, create exits, or modify execution state.
+`TradeJournalPort` records immutable completed-trade outcomes. It does not
+authorize trades, create exits, or infer missing execution evidence.
 
-The MS-0.9 performance analytics service consumes completed journal entries and produces descriptive aggregate metrics. It does not infer missing outcomes, mutate journal entries, or feed decisions back into the trading-control path.
-
-### Audit port
-
-`AuditPort` records material events. Audit is a cross-cutting boundary and does not own strategy, risk, governance, execution, journal, or analytics authority.
+MS-0.10 supplies the missing exit-execution evidence upstream of MS-0.9.
+A completed journal entry requires actual entry and exit execution evidence.
 
 ## 3. Dependency direction
 
