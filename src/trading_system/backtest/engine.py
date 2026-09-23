@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from typing import Callable, Sequence
@@ -170,9 +170,7 @@ class BacktestEngine:
                     ambiguous.append(
                         f"AMBIGUOUS_EXIT_ORDERING:{position_id}:{candle.timestamp_close.isoformat()}"
                     )
-                    active[position_id] = _ActivePosition(
-                        **{**state.__dict__, "ambiguous": True}
-                    )
+                    active[position_id] = replace(state, ambiguous=True)
                     continue
 
                 instruction = (
