@@ -15,6 +15,8 @@ from .enums import (
     DecisionStatus,
     Direction,
     ExecutionState,
+    ExitExecutionState,
+    ExitType,
     GovernanceStatus,
     KeyLevelSource,
     Regime,
