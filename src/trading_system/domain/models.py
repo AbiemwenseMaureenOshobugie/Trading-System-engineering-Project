@@ -274,15 +274,6 @@ class ExecutionRecord:
     order: PaperOrder
     fill: Optional[PaperFill]
     failure_reason: Optional[str]
-    broker_order_id: Optional[str] = None
-    broker_deal_id: Optional[str] = None
-    broker_position_id: Optional[str] = None
-    actual_fill_price: Optional[Decimal] = None
-    actual_executed_quantity: Optional[Decimal] = None
-    execution_timestamp: Optional[datetime] = None
-    broker_retcode: Optional[int] = None
-    broker_status: Optional[str] = None
-    slippage: Optional[Decimal] = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -309,7 +300,6 @@ class Position:
     open_quantity: Decimal
     entry_execution_price: Decimal
     entry_execution_timestamp: datetime
-    broker_position_id: Optional[str] = None
     def __post_init__(self) -> None:
         if self.open_quantity <= 0: raise ValueError("open_quantity must be positive")
         if self.entry_execution_timestamp.tzinfo is None: raise ValueError("entry_execution_timestamp must be timezone-aware")
@@ -354,9 +344,3 @@ class ExitExecutionRecord:
     fill: Optional[ExitPaperFill]
     failure_reason: Optional[str]
     failure_timestamp: Optional[datetime]
-    broker_order_id: Optional[str] = None
-    broker_deal_id: Optional[str] = None
-    actual_exit_price: Optional[Decimal] = None
-    actual_executed_quantity: Optional[Decimal] = None
-    exit_execution_timestamp: Optional[datetime] = None
-    broker_retcode: Optional[int] = None
