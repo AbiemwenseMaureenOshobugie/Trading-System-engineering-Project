@@ -1,1 +1,1 @@
-"""External data and broker integration adapters."""
+"""External system adapters."""
