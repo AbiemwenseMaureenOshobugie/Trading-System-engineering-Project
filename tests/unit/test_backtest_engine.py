@@ -1,6 +1,6 @@
-"""MS-0.11 replay harness tests."""
+﻿"""MS-0.11 replay harness tests."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from trading_system.backtest import BacktestConfig, BacktestEngine, ReplayDecision
@@ -173,7 +173,7 @@ def candle(close_time, high="1.101", low="1.099"):
     return MarketCandle(
         symbol="EURUSD",
         timeframe=Timeframe.M15,
-        timestamp_open=close_time.replace(minute=close_time.minute-15),
+        timestamp_open=close_time - timedelta(minutes=15),
         timestamp_close=close_time,
         open=Decimal("1.100"),
         high=Decimal(high),
@@ -248,3 +248,4 @@ def test_result_is_reproducible():
             analytics=FakeAnalytics(),
         ).run(config=config(), candles=[candle(T0)])
     assert run() == run()
+
