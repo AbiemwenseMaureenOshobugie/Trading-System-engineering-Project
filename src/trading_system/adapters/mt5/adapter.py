@@ -180,7 +180,7 @@ class MT5ExecutionAdapter:
             raise MT5AdapterError("MT5 returned a partial fill; MS-0.12 has no reconciliation semantics")
         return self._failed_record(candidate, volume, getattr(result, "comment", None) or f"MT5 retcode {retcode}", retcode)
 
-    def submit(self, *, instruction: ExitInstruction, broker_position_id: str) -> ExitExecutionRecord:
+    def submit_exit(self, *, instruction: ExitInstruction, broker_position_id: str) -> ExitExecutionRecord:
         if self._state is not MT5ConnectionState.READY:
             raise MT5AdapterError("MT5 adapter is not READY")
         symbol = self._resolve_symbol(instruction.symbol)
