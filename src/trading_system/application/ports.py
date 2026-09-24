@@ -124,7 +124,7 @@ class TradeJournalPort(Protocol):
 @runtime_checkable
 class ExitExecutionPort(Protocol):
     """Submit an authorized exit instruction for an existing open position."""
-    def submit(self, *, instruction: ExitInstruction) -> ExitExecutionRecord: ...
+    def submit(self, *, instruction: ExitInstruction, broker_position_id: str) -> ExitExecutionRecord: ...
 
 @runtime_checkable
 class AuditPort(Protocol):
