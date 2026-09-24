@@ -13,7 +13,6 @@ from trading_system.domain import (
     ExitExecutionRecord, ExitExecutionState, ExitInstruction, ExitPaperFill,
     GovernanceResult, PaperFill, PaperOrder, RiskResult,
 )
-from trading_system.execution.engine import ExecutionEngine
 
 
 class MT5AdapterError(RuntimeError):
@@ -121,7 +120,7 @@ class MT5ExecutionAdapter:
     def submit(self, *, candidate: DecisionCandidate, decision: DecisionResult, risk: RiskResult, governance: GovernanceResult) -> ExecutionRecord:
         if self._state is not MT5ConnectionState.READY:
             raise MT5AdapterError("MT5 adapter is not READY")
-        ExecutionEngine._assert_authorized(candidate, decision, risk, governance)
+        self._assert_authorized(candidate, decision, risk, governance)
         symbol = self._resolve_symbol(candidate.symbol)
         info = self._symbol_info(symbol)
         volume = self._validate_volume(risk.position_size, info)
@@ -229,6 +228,23 @@ class MT5ExecutionAdapter:
             broker_deal_id=str(getattr(result, "deal", 0)),
             broker_retcode=retcode,
         )
+
+    @staticmethod
+    def _assert_authorized(candidate, decision, risk, governance) -> None:
+        if decision.decision_id != candidate.decision_id:
+            raise MT5AdapterError("decision_id does not match candidate")
+        if risk.decision_id != candidate.decision_id:
+            raise MT5AdapterError("risk decision_id does not match candidate")
+        if governance.decision_id != candidate.decision_id:
+            raise MT5AdapterError("governance decision_id does not match candidate")
+        if decision.status.value != "VALID":
+            raise MT5AdapterError("execution requires VALID decision")
+        if risk.status.value != "RISK_AUTHORIZED":
+            raise MT5AdapterError("execution requires risk authorization")
+        if governance.status.value != "GOVERNANCE_AUTHORIZED":
+            raise MT5AdapterError("execution requires governance authorization")
+        if risk.position_size is None or risk.position_size <= 0:
+            raise MT5AdapterError("execution requires a positive authorized position size")
 
     def _resolve_symbol(self, ast_symbol: str) -> str:
         try: return self._config.symbol_map[ast_symbol]
