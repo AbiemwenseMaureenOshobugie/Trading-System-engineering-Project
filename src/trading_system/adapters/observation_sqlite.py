@@ -105,6 +105,8 @@ class SQLiteObservationRepository:
             ) from exc
 
     def append(self, revision: ObservationRevision) -> ObservationResult:
+        if revision.revision_number < 1:
+            raise ValueError("revision_number must be positive")
         snapshot = _to_json(revision)
         try:
             with self._connect() as db:
@@ -251,7 +253,7 @@ def _key_level(v: dict[str, Any]) -> KeyLevel:
         key_level_id=v["key_level_id"],
         source_types=tuple(KeyLevelSource(x) for x in v["source_types"]),
         source_zones=tuple(
-            (KeyLevelSource(x["source_type"]), _zone(x["zone"]))
+            (KeyLevelSource(x[0]), _zone(x[1]))
             for x in v["source_zones"]
         ),
         active=v["active"], role=v["role"],
