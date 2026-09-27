@@ -122,8 +122,7 @@ class RuntimeControl:
             return self._status
 
     def next_invocation_at(self, *, instrument: str, now: datetime | None = None) -> datetime | None:
-        opportunity = self._coordinator.opportunity(instrument=instrument, now=now)
-        return opportunity.invocation_at if opportunity is not None else None
+        return self._coordinator.next_invocation_at(instrument=instrument, now=now)
 
     def run_if_due(
         self, *, instrument: str, now: datetime | None = None
