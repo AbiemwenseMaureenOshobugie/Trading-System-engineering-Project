@@ -341,7 +341,7 @@ def test_repository_conflict_returns_canonical_latest_revision():
 
     identity = ObservationIdentity("EURUSD", BOUNDARY)
     latest = repo.latest(identity)
-    assert latest is first
+    assert latest == first
 
 
 def test_unexpected_component_failure_raises_application_error():

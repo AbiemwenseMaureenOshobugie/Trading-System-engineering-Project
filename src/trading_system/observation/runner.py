@@ -358,11 +358,15 @@ class ObservationRunner:
         data = kwargs.pop("data")
         window = kwargs.pop("window")
         structure = kwargs.pop("structure", None)
+        key_levels = kwargs.pop("key_levels", ())
+        candidate_outcomes = kwargs.pop("candidate_outcomes", ())
         return ObservationRevision(
             **kwargs,
             methodology_versions=self._methodology_versions,
             data_window=window,
             market_structure=structure,
+            key_levels=key_levels,
+            candidate_outcomes=candidate_outcomes,
             h1_data_reference=_data_reference(data.h1),
             m15_data_reference=_data_reference(data.m15),
             validation_outcome=tuple(
