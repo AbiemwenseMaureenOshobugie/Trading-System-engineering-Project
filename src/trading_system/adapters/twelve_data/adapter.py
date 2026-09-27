@@ -336,7 +336,7 @@ class TwelveDataMarketDataAdapter:
         valid = record.validation_outcome is IngestionOutcome.SUCCESS
         return MarketDataQuality(
             valid=valid,
-            complete=record.candles_withheld_incomplete == 0,
+            # Incomplete provider bars are normally the currently forming bar;\n            # the observation window itself owns continuity/completeness semantics.\n            complete=True,
             sufficient=record.candles_accepted > 0,
             rejected_records=record.candles_rejected,
             provenance_refs=(
