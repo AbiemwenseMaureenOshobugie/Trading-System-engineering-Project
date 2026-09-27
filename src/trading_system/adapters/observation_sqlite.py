@@ -38,7 +38,7 @@ class ObservationSerializationError(ObservationPersistenceError):
 
 MIGRATIONS = (
     (1, "initial_observation_revisions", """
-        CREATE TABLE observation_revisions (
+        CREATE TABLE IF NOT EXISTS observation_revisions (
             observation_id TEXT NOT NULL,
             instrument TEXT NOT NULL,
             h1_boundary_timestamp TEXT NOT NULL,
@@ -51,7 +51,7 @@ MIGRATIONS = (
             PRIMARY KEY (observation_id, revision_number),
             UNIQUE (instrument, h1_boundary_timestamp, revision_number)
         );
-        CREATE INDEX idx_observation_revisions_identity
+        CREATE INDEX IF NOT EXISTS idx_observation_revisions_identity
         ON observation_revisions (
             instrument, h1_boundary_timestamp, revision_number DESC
         );
@@ -93,7 +93,13 @@ class SQLiteObservationRepository:
             )
         except ObservationPersistenceError:
             raise
-        except (sqlite3.Error, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+        except ObservationSerializationError:
+            raise
+        except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+            raise ObservationSerializationError(
+                f"failed to reconstruct persisted observation revision: {exc}"
+            ) from exc
+        except sqlite3.Error as exc:
             raise ObservationPersistenceError(
                 f"failed to read observation history: {exc}"
             ) from exc
