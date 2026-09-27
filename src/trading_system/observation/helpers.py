@@ -29,6 +29,10 @@ class MarketDataH1BoundaryResolver:
         completed = [c.timestamp_close for c in candles if c.timestamp_close <= now]
         return max(completed) if completed else None
 
+    def next_completed_boundary(self, *, instrument: str, now: datetime) -> datetime | None:
+        latest = self.latest_completed_boundary(instrument=instrument, now=now)
+        return latest + timedelta(hours=1) if latest is not None else None
+
 
 class ExplicitObservationHistoryResolver:
     """Resolve an operational data window supplied by the application.
