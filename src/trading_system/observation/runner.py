@@ -356,10 +356,13 @@ class ObservationRunner:
 
     def _revision(self, **kwargs) -> ObservationRevision:
         data = kwargs.pop("data")
+        window = kwargs.pop("window")
+        structure = kwargs.pop("structure", None)
         return ObservationRevision(
             **kwargs,
             methodology_versions=self._methodology_versions,
-            data_window=kwargs.get("window"),
+            data_window=window,
+            market_structure=structure,
             h1_data_reference=_data_reference(data.h1),
             m15_data_reference=_data_reference(data.m15),
             validation_outcome=tuple(
