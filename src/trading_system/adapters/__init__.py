@@ -1,47 +1,15 @@
 """External system adapters."""
 
-from .mt5 import (
-    MT5AdapterConfig,
-    MT5AdapterError,
-    MT5ConnectionState,
-    MT5ExecutionAdapter,
-    MetaTrader5Gateway,
-)
-from .twelve_data import (
-    TwelveDataAdapterConfig,
-    TwelveDataMarketDataAdapter,
-    CompletionBoundary,
-    CompletionResult,
-    SymbolMapper,
-    CanonicalSymbol,
-    ProviderSymbol,
-    PollingSchedule,
-    IngestionRecord,
-    IngestionOutcome,
-    CandleValidator,
-    ValidationError,
-    ValidationErrorCode,
-    ValidationResult,
+from .observation_sqlite import (
+    DATABASE_SCHEMA_VERSION, OBSERVATION_SCHEMA_VERSION,
+    ObservationPersistenceError, ObservationRevisionConflict,
+    ObservationSchemaMismatch, ObservationSerializationError,
+    SQLiteObservationRepository,
 )
 
 __all__ = [
-    "MT5AdapterConfig",
-    "MT5AdapterError",
-    "MT5ConnectionState",
-    "MT5ExecutionAdapter",
-    "MetaTrader5Gateway",
-    "TwelveDataAdapterConfig",
-    "TwelveDataMarketDataAdapter",
-    "CompletionBoundary",
-    "CompletionResult",
-    "SymbolMapper",
-    "CanonicalSymbol",
-    "ProviderSymbol",
-    "PollingSchedule",
-    "IngestionRecord",
-    "IngestionOutcome",
-    "CandleValidator",
-    "ValidationError",
-    "ValidationErrorCode",
-    "ValidationResult",
+    "DATABASE_SCHEMA_VERSION", "OBSERVATION_SCHEMA_VERSION",
+    "ObservationPersistenceError", "ObservationRevisionConflict",
+    "ObservationSchemaMismatch", "ObservationSerializationError",
+    "SQLiteObservationRepository",
 ]
