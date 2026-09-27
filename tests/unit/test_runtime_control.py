@@ -71,6 +71,9 @@ class Coordinator:
         self.started = Event()
         self.release = Event()
 
+    def next_invocation_at(self, *, instrument, now=None):
+        return TS + timedelta(hours=1)
+
     def run_if_due(self, *, instrument, now=None):
         self.due_calls += 1
         self.started.set()
@@ -178,7 +181,7 @@ def test_observation_failure_becomes_structured_runtime_failure():
     with pytest.raises(RuntimeError):
         c.run_if_due(instrument="EURUSD")
 
-    assert c.status is RuntimeStatus.FAILED
+    assert c.status is RuntimeStatus.RUNNING
     assert c.last_failure is not None
     assert c.last_failure.component is RuntimeFailureComponent.COORDINATOR
 

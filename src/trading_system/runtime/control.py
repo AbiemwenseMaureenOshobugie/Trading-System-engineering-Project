@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from threading import Condition, RLock
 from typing import Callable
 
+from .scheduler import RuntimeScheduler
+
 from trading_system.domain import ObservationResult
 from trading_system.observation import ObservationExecutionError, ObservationLifecycleCoordinator
 
@@ -41,6 +43,12 @@ class RuntimeControl:
         self._status = RuntimeStatus.STOPPED
         self._active_invocations = 0
         self._last_failure: RuntimeFailure | None = None
+        self._scheduler = RuntimeScheduler(
+            instruments=self._config.instruments.instruments,
+            next_invocation_at=self.next_invocation_at,
+            run_if_due=self.run_if_due,
+            clock=self._clock,
+        )
 
     @property
     def status(self) -> RuntimeStatus:
@@ -71,7 +79,8 @@ class RuntimeControl:
                 self._last_failure = None
                 self._status = RuntimeStatus.RUNNING
                 self._emit("RUNTIME_STARTED", "RUNTIME")
-                return self._status
+            self._scheduler.start()
+            return RuntimeStatus.RUNNING
         except RuntimeOwnershipError as exc:
             self._fail(
                 component=RuntimeFailureComponent.OWNERSHIP,
@@ -103,12 +112,17 @@ class RuntimeControl:
                 )
             self._status = RuntimeStatus.STOPPING
             self._emit("RUNTIME_STOP_REQUESTED", "RUNTIME")
+        self._scheduler.stop()
+        with self._condition:
             while self._active_invocations:
                 self._condition.wait()
             self._release_ownership()
             self._status = RuntimeStatus.STOPPED
             self._emit("RUNTIME_STOPPED", "RUNTIME")
             return self._status
+
+    def next_invocation_at(self, *, instrument: str, now: datetime | None = None) -> datetime | None:
+        return self._coordinator.next_invocation_at(instrument=instrument, now=now)
 
     def run_if_due(
         self, *, instrument: str, now: datetime | None = None
@@ -177,7 +191,7 @@ class RuntimeControl:
                 if isinstance(exc, ObservationExecutionError)
                 else RuntimeFailureComponent.COORDINATOR
             )
-            self._fail(
+            self._record_invocation_failure(
                 component=component,
                 code="OBSERVATION_INVOCATION_FAILED",
                 message=str(exc),
@@ -197,6 +211,27 @@ class RuntimeControl:
                 self._active_invocations -= 1
                 if self._active_invocations == 0:
                     self._condition.notify_all()
+
+    def _record_invocation_failure(
+        self,
+        *,
+        component: RuntimeFailureComponent,
+        code: str,
+        message: str,
+        reference: str | None = None,
+    ) -> None:
+        timestamp = self._utc(self._clock())
+        failure = RuntimeFailure(
+            failure_id=f"RF-{self.runtime_id}-{timestamp.isoformat()}",
+            runtime_id=self.runtime_id,
+            timestamp=timestamp,
+            component=component,
+            failure_code=code,
+            message=message,
+            reference=reference,
+        )
+        with self._condition:
+            self._last_failure = failure
 
     def _fail(
         self,
