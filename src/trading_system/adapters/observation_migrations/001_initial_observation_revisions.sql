@@ -1,4 +1,4 @@
-CREATE TABLE observation_revisions (
+CREATE TABLE IF NOT EXISTS observation_revisions (
     observation_id TEXT NOT NULL,
     instrument TEXT NOT NULL,
     h1_boundary_timestamp TEXT NOT NULL,
@@ -11,5 +11,10 @@ CREATE TABLE observation_revisions (
     PRIMARY KEY (observation_id, revision_number),
     UNIQUE (instrument, h1_boundary_timestamp, revision_number)
 );
-CREATE INDEX idx_observation_revisions_identity
-ON observation_revisions (instrument, h1_boundary_timestamp, revision_number DESC);
+
+CREATE INDEX IF NOT EXISTS idx_observation_revisions_identity
+ON observation_revisions (
+    instrument,
+    h1_boundary_timestamp,
+    revision_number DESC
+);
