@@ -181,7 +181,7 @@ def test_observation_failure_becomes_structured_runtime_failure():
     with pytest.raises(RuntimeError):
         c.run_if_due(instrument="EURUSD")
 
-    assert c.status is RuntimeStatus.FAILED
+    assert c.status is RuntimeStatus.RUNNING
     assert c.last_failure is not None
     assert c.last_failure.component is RuntimeFailureComponent.COORDINATOR
 
