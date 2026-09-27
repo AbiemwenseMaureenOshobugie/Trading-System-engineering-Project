@@ -179,7 +179,7 @@ class SQLiteObservationRepository:
                     if version not in applied:
                         db.executescript(sql)
                         db.execute(
-                            "INSERT INTO schema_migrations VALUES (?,?,?)",
+                            "INSERT OR IGNORE INTO schema_migrations VALUES (?,?,?)",
                             (version, name, _dt(datetime.now().astimezone())),
                         )
                 db.commit()
