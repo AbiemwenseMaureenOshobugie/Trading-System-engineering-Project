@@ -184,7 +184,7 @@ class ObservationRunner:
                     self._revision(
                         identity=identity,
                         revision_number=revision_number,
-                        evaluated_at=evaluated_at,
+                        evaluation_timestamp=evaluated_at,
                         status=ObservationStatus.WAIT,
                         reason=failure_reason,
                         window=window,
@@ -222,7 +222,7 @@ class ObservationRunner:
                     self._revision(
                         identity=identity,
                         revision_number=revision_number,
-                        evaluated_at=evaluated_at,
+                        evaluation_timestamp=evaluated_at,
                         status=ObservationStatus.NO_SETUP,
                         reason=ObservationReason.NO_QUALIFYING_SETUP.value,
                         window=window,
@@ -271,7 +271,7 @@ class ObservationRunner:
                 self._revision(
                     identity=identity,
                     revision_number=revision_number,
-                    evaluated_at=evaluated_at,
+                    evaluation_timestamp=evaluated_at,
                     status=ObservationStatus.EVALUATED,
                     reason="EVALUATION_COMPLETED",
                     window=window,
