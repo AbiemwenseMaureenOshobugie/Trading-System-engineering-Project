@@ -1,18 +1,16 @@
-"""Application-layer ports for the trading system.
-
-Ports define dependency direction without implementing trading behavior.
-Concrete adapters and services are introduced in later milestones.
-"""
+"""Application-layer ports for the trading system."""
 
 from .ports import (
     AuditPort,
     ConfirmationEnginePort,
     DecisionEnginePort,
-    ExecutionPort, ExitExecutionPort,
+    ExecutionPort,
+    ExitExecutionPort,
     GovernanceEnginePort,
     H1MarketStructurePort,
     KeyLevelEnginePort,
     MarketDataPort,
+    ObservationRepositoryPort,
     RiskEnginePort,
     SetupClassifierPort,
     TradeJournalPort,
@@ -22,11 +20,13 @@ __all__ = [
     "AuditPort",
     "ConfirmationEnginePort",
     "DecisionEnginePort",
-    "ExecutionPort", "ExitExecutionPort",
+    "ExecutionPort",
+    "ExitExecutionPort",
     "GovernanceEnginePort",
     "H1MarketStructurePort",
     "KeyLevelEnginePort",
     "MarketDataPort",
+    "ObservationRepositoryPort",
     "RiskEnginePort",
     "SetupClassifierPort",
     "TradeJournalPort",

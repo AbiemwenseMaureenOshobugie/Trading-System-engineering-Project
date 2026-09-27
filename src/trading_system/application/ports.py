@@ -7,7 +7,10 @@ not contain strategy rules, risk formulas, governance rules, or broker logic.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Protocol, Sequence, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, Sequence, runtime_checkable
+
+if TYPE_CHECKING:
+    from trading_system.domain import ObservationIdentity, ObservationResult, ObservationRevision
 
 from trading_system.domain import (
     TradeJournalEntry,
@@ -143,6 +146,16 @@ __all__ = [
     "H1MarketStructurePort",
     "KeyLevelEnginePort",
     "MarketDataPort",
+    "ObservationRepositoryPort",
     "RiskEnginePort",
     "SetupClassifierPort",
 ]
+
+
+@runtime_checkable
+class ObservationRepositoryPort(Protocol):
+    """Durable canonical persistence boundary for observation revisions."""
+
+    def latest(self, identity: "ObservationIdentity") -> "ObservationResult | None": ...
+
+    def append(self, revision: "ObservationRevision") -> "ObservationResult": ...

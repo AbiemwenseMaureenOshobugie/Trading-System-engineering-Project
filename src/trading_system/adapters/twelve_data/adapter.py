@@ -10,7 +10,7 @@ from typing import Any, Mapping, Optional, Protocol, Sequence
 from urllib import error, request
 
 from trading_system.application.ports import MarketDataPort
-from trading_system.domain import MarketCandle, Timeframe
+from trading_system.domain import MarketCandle, MarketDataQuality, Timeframe
 
 from .completion import CompletionBoundary, CompletionResult
 from .config import TwelveDataAdapterConfig
@@ -93,6 +93,7 @@ class TwelveDataMarketDataAdapter:
         self._polling = PollingSchedule(config.poll_offset_seconds)
         self._polling_config = PollingConfig(config.poll_offset_seconds)
         self._observed_timestamps: dict[tuple[str, Timeframe], set[datetime]] = {}
+        self._last_ingestion_records: dict[tuple[str, Timeframe], IngestionRecord] = {}
 
     def verify_entitlement(self) -> None:
         """Verify entitlement for all configured symbols (MD-01 safeguard).
@@ -187,6 +188,7 @@ class TwelveDataMarketDataAdapter:
                 candles_withheld_incomplete=0,
                 error_details=str(e),
             )
+            self._last_ingestion_records[(symbol, timeframe)] = ingestion_record
             return ()
 
         if raw_data.get("status") == "error":
@@ -213,6 +215,7 @@ class TwelveDataMarketDataAdapter:
                 candles_withheld_incomplete=0,
                 error_details=msg,
             )
+            self._last_ingestion_records[(symbol, timeframe)] = ingestion_record
             return ()
 
         # Parse and validate candles
@@ -231,6 +234,7 @@ class TwelveDataMarketDataAdapter:
                 candles_rejected=0,
                 candles_withheld_incomplete=0,
             )
+            self._last_ingestion_records[(symbol, timeframe)] = ingestion_record
             return ()
 
         # Initialize observed timestamps for this symbol/timeframe
@@ -319,7 +323,26 @@ class TwelveDataMarketDataAdapter:
             candles_withheld_incomplete=withheld,
         )
 
+        self._last_ingestion_records[(symbol, timeframe)] = ingestion_record
         return tuple(accepted)
+
+    def get_quality(
+        self, *, symbol: str, timeframe: Timeframe, start: datetime, end: datetime
+    ) -> MarketDataQuality:
+        """Return provider-neutral quality metadata for the most recent request."""
+        record = self._last_ingestion_records.get((symbol, timeframe))
+        if record is None:
+            return MarketDataQuality(False, False, False, 0, ())
+        valid = record.validation_outcome is IngestionOutcome.SUCCESS
+        return MarketDataQuality(
+            valid=valid,
+            # Incomplete provider bars are normally the currently forming bar;\n            # the observation window itself owns continuity/completeness semantics.\n            complete=True,
+            sufficient=record.candles_accepted > 0,
+            rejected_records=record.candles_rejected,
+            provenance_refs=(
+                f"{record.provider}:{record.provider_symbol}:{record.retrieval_timestamp.isoformat()}",
+            ),
+        )
 
     def ingestion_cycle(
         self,
