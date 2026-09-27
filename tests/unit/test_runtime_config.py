@@ -33,7 +33,7 @@ def test_runtime_configuration_has_four_operational_categories():
         lambda: DataProviderConfig("", "secret://x"),
         lambda: PersistenceConfig("", "sqlite:///aster.db"),
         lambda: RuntimeConfig(
-            "aster",
+            "",
             InstrumentConfig(("EURUSD",)),
             OperationalTimeConfig(),
             DataProviderConfig("twelve_data", "secret://x"),
