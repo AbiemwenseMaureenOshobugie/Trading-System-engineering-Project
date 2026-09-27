@@ -71,6 +71,9 @@ class Coordinator:
         self.started = Event()
         self.release = Event()
 
+    def next_invocation_at(self, *, instrument, now=None):
+        return TS + timedelta(hours=1)
+
     def run_if_due(self, *, instrument, now=None):
         self.due_calls += 1
         self.started.set()
