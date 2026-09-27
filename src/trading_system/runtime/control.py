@@ -7,7 +7,7 @@ from threading import Condition, RLock
 from typing import Callable
 
 from trading_system.domain import ObservationResult
-from trading_system.observation import ObservationLifecycleCoordinator
+from trading_system.observation import ObservationExecutionError, ObservationLifecycleCoordinator
 
 from .audit import RuntimeAuditPort, RuntimeAuditRecord
 from .config import RuntimeConfig
@@ -82,7 +82,7 @@ class RuntimeControl:
             return RuntimeStatus.FAILED
         except Exception as exc:
             self._fail(
-                component=RuntimeFailureComponent.RUNTIME,
+                component=RuntimeFailureComponent.CONFIGURATION,
                 code="START_FAILED",
                 message=str(exc),
             )
@@ -151,30 +151,43 @@ class RuntimeControl:
                     f"{operation} requires RUNNING runtime; current={self._status.value}"
                 )
             self._active_invocations += 1
-            self._emit(
-                "MANUAL_OBSERVATION_REQUESTED" if operation == "MANUAL_OBSERVATION" else "RUNTIME_OBSERVATION_REQUESTED",
-                "RUNTIME",
-                reference=instrument,
+            requested_event = (
+                "MANUAL_OBSERVATION_REQUESTED"
+                if operation == "MANUAL_OBSERVATION"
+                else "RUNTIME_OBSERVATION_REQUESTED"
             )
+            self._emit(requested_event, "RUNTIME", reference=instrument)
         try:
             result = invocation()
+            completed_event = (
+                "MANUAL_OBSERVATION_COMPLETED"
+                if operation == "MANUAL_OBSERVATION"
+                else "RUNTIME_OBSERVATION_COMPLETED"
+            )
             self._emit(
-                "MANUAL_OBSERVATION_COMPLETED" if operation == "MANUAL_OBSERVATION" else "RUNTIME_OBSERVATION_COMPLETED",
+                completed_event,
                 "COORDINATOR",
                 reference=instrument,
                 outcome=result.status.value if result is not None else None,
             )
             return result
         except Exception as exc:
+            component = (
+                RuntimeFailureComponent.RUNNER
+                if isinstance(exc, ObservationExecutionError)
+                else RuntimeFailureComponent.COORDINATOR
+            )
             self._fail(
-                component=RuntimeFailureComponent.COORDINATOR,
+                component=component,
                 code="OBSERVATION_INVOCATION_FAILED",
                 message=str(exc),
                 reference=instrument,
             )
             self._emit(
-                "MANUAL_OBSERVATION_FAILED" if operation == "MANUAL_OBSERVATION" else "RUNTIME_FAILURE",
-                "COORDINATOR",
+                "MANUAL_OBSERVATION_FAILED"
+                if operation == "MANUAL_OBSERVATION"
+                else "RUNTIME_FAILURE",
+                component.value,
                 reference=instrument,
                 outcome="FAILED",
             )
@@ -214,15 +227,7 @@ class RuntimeControl:
         )
 
     def _release_ownership(self) -> None:
-        try:
-            self._ownership.release()
-        except Exception as exc:
-            self._fail(
-                component=RuntimeFailureComponent.OWNERSHIP,
-                code="OWNERSHIP_RELEASE_FAILED",
-                message=str(exc),
-            )
-            raise
+        self._ownership.release()
 
     def _emit(
         self,
@@ -232,10 +237,11 @@ class RuntimeControl:
         reference: str | None = None,
         outcome: str | None = None,
     ) -> None:
+        timestamp = self._utc(self._clock())
         self._audit.record(
             RuntimeAuditRecord(
-                audit_id=f"RA-{self.runtime_id}-{self._clock().isoformat()}-{event_type}",
-                timestamp=self._utc(self._clock()),
+                audit_id=f"RA-{self.runtime_id}-{timestamp.isoformat()}-{event_type}",
+                timestamp=timestamp,
                 runtime_id=self.runtime_id,
                 event_type=event_type,
                 component=component,
