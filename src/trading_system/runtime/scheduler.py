@@ -59,7 +59,7 @@ class RuntimeScheduler:
             future: list[datetime] = []
 
             for instrument in self._instruments:
-                scheduled = self._next_invocation_at(instrument, now)
+                scheduled = self._next_invocation_at(instrument=instrument, now=now)
                 if scheduled is None:
                     continue
                 scheduled = self._utc(scheduled)
@@ -76,7 +76,7 @@ class RuntimeScheduler:
                     if self._stop.is_set():
                         return
                     try:
-                        self._run_if_due(instrument, self._utc(self._clock()))
+                        self._run_if_due(instrument=instrument, now=self._utc(self._clock()))
                     except Exception:
                         # RuntimeControl owns failure visibility. The scheduler
                         # isolates this instrument and continues with the next.
