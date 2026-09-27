@@ -219,6 +219,12 @@ def test_future_observation_schema_is_rejected(tmp_path):
         db.latest(identity())
 
 
+def test_repository_io_failure_is_not_an_observation_outcome(tmp_path):
+    bad_path = tmp_path / "not-a-file"
+    bad_path.mkdir()
+    with pytest.raises(ObservationPersistenceError):
+        SQLiteObservationRepository(bad_path)
+
 def test_database_contains_hybrid_envelope_and_snapshot(tmp_path):
     db_path = tmp_path / "observation.db"
     SQLiteObservationRepository(db_path).append(revision(1))
