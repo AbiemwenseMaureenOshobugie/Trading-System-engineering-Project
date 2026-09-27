@@ -11,6 +11,7 @@ from .config import (
 from .control import RuntimeControl, RuntimeControlError
 from .failure import RuntimeFailure, RuntimeFailureComponent
 from .ownership import FileRuntimeOwnership, RuntimeOwnership, RuntimeOwnershipError
+from .scheduler import RuntimeScheduler
 from .status import RuntimeStatus
 
 __all__ = [
@@ -28,5 +29,6 @@ __all__ = [
     "RuntimeFailureComponent",
     "RuntimeOwnership",
     "RuntimeOwnershipError",
+    "RuntimeScheduler",
     "RuntimeStatus",
 ]
