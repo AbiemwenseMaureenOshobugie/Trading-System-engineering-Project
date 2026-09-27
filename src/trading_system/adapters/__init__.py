@@ -45,3 +45,13 @@ __all__ = [
     "ValidationErrorCode",
     "ValidationResult",
 ]
+
+from .observation_sqlite import (
+    DATABASE_SCHEMA_VERSION,
+    OBSERVATION_SCHEMA_VERSION,
+    ObservationPersistenceError,
+    ObservationRevisionConflict,
+    ObservationSchemaMismatch,
+    ObservationSerializationError,
+    SQLiteObservationRepository,
+)
