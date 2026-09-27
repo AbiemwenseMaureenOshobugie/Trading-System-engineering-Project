@@ -91,10 +91,9 @@ class RuntimeScheduler:
                 )
                 self._wait(wait_seconds)
             else:
-                # No boundary authority currently reports a future boundary.
-                # Do not invent a polling interval; yield briefly only to avoid
-                # a hot loop while waiting for the authority to become available.
-                self._wait(0.1)
+                # The boundary authority is responsible for producing the next
+                # operational boundary. The scheduler invents no polling interval.
+                self._stop.wait()
 
     def _wait(self, seconds: float) -> None:
         if self._sleep is not None:
