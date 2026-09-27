@@ -9,6 +9,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from trading_system.observation.repository import ObservationRevisionConflict
+
 from trading_system.domain import (
     CandidateOutcome, ConfirmationType, DecisionCandidate, DecisionResult,
     DecisionStatus, Direction, GovernanceResult, GovernanceStatus, KeyLevel,
@@ -24,10 +26,6 @@ OBSERVATION_SCHEMA_VERSION = "MS-0.14"
 
 class ObservationPersistenceError(RuntimeError):
     """Base class for durable observation persistence failures."""
-
-
-class ObservationRevisionConflict(ObservationPersistenceError):
-    """Expected concurrent use of an already-occupied revision."""
 
 
 class ObservationSchemaMismatch(ObservationPersistenceError):
