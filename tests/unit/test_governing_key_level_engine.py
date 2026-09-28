@@ -128,6 +128,29 @@ def test_multiple_matching_levels_are_structural_consistency_failure():
     assert result.eligible_key_level_ids == ("KL-1", "KL-2")
 
 
+def test_mixed_source_key_level_uses_evidence_reference_for_association():
+    mixed = KeyLevel(
+        key_level_id="KL-MIXED",
+        source_types=(KeyLevelSource.VALIDATED_SWING, KeyLevelSource.RANGE_BOUNDARY),
+        source_zones=(
+            (KeyLevelSource.VALIDATED_SWING, ZONE),
+            (KeyLevelSource.RANGE_BOUNDARY, ZONE),
+        ),
+        active=True,
+        role="SUPPORT",
+        created_at=TS,
+        updated_at=TS,
+        evidence_refs=(
+            "RANGE_BOUNDARY:LOWER",
+            "SWING:LOW:2026-01-15T08:00:00+00:00",
+        ),
+        state_history=("SOURCE_ESTABLISHED:MEANINGFUL_SWING",),
+    )
+    result = GoverningKeyLevelEngine().select(request(mixed))
+    assert result.status is GoverningKeyLevelStatus.SELECTED
+    assert result.selected_key_level == mixed
+
+
 def test_role_or_source_type_does_not_establish_structural_association():
     unrelated = level(
         key_level_id="KL-2",
