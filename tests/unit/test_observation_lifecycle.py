@@ -24,6 +24,9 @@ class Boundary:
     def latest_completed_boundary(self, *, instrument, now):
         return BOUNDARY
 
+    def next_completed_boundary(self, *, instrument, now):
+        return BOUNDARY
+
 
 class Repository:
     def __init__(self, result=None):
@@ -54,6 +57,28 @@ def make_coordinator(repository=None, runner=None, now=BOUNDARY):
         repository=repository or Repository(),
         runner=runner or Runner(),
     )
+
+
+def test_next_invocation_at_uses_next_h1_boundary_and_poll_offset():
+    c = make_coordinator()
+    assert c.next_invocation_at(
+        instrument="EURUSD",
+        now=BOUNDARY,
+    ) == BOUNDARY + DEFAULT_POLL_OFFSET
+
+
+def test_next_invocation_at_can_return_no_boundary():
+    class NoBoundary(Boundary):
+        def next_completed_boundary(self, *, instrument, now):
+            return None
+
+    c = ObservationLifecycleCoordinator(
+        clock=Clock(BOUNDARY),
+        boundary_port=NoBoundary(),
+        repository=Repository(),
+        runner=Runner(),
+    )
+    assert c.next_invocation_at(instrument="EURUSD", now=BOUNDARY) is None
 
 
 def test_existing_thirty_second_offset():

@@ -122,7 +122,26 @@ class RuntimeControl:
             return self._status
 
     def next_invocation_at(self, *, instrument: str, now: datetime | None = None) -> datetime | None:
-        return self._coordinator.next_invocation_at(instrument=instrument, now=now)
+        current = self._utc(now if now is not None else self._clock())
+        try:
+            return self._coordinator.next_invocation_at(
+                instrument=instrument,
+                now=current,
+            )
+        except Exception as exc:
+            self._record_invocation_failure(
+                component=RuntimeFailureComponent.COORDINATOR,
+                code="BOUNDARY_CALCULATION_FAILED",
+                message=str(exc),
+                reference=instrument,
+            )
+            self._emit(
+                "RUNTIME_BOUNDARY_CALCULATION_FAILED",
+                RuntimeFailureComponent.COORDINATOR.value,
+                reference=instrument,
+                outcome="FAILED",
+            )
+            return None
 
     def run_if_due(
         self, *, instrument: str, now: datetime | None = None
