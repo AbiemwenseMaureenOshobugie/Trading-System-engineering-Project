@@ -24,6 +24,9 @@ class Boundary:
     def latest_completed_boundary(self, *, instrument, now):
         return BOUNDARY
 
+    def next_completed_boundary(self, *, instrument, now):
+        return BOUNDARY
+
 
 class Repository:
     def __init__(self, result=None):
