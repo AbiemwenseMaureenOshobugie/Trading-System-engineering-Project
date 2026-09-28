@@ -1,6 +1,5 @@
-"""Application-layer ports and the canonical composition root."""
+"""Application-layer ports for the trading system."""
 
-from .composition import CompositionDependencies, CompositionGapError, compose_runtime
 from .ports import (
     AuditPort,
     ConfirmationEnginePort,
@@ -19,8 +18,6 @@ from .ports import (
 
 __all__ = [
     "AuditPort",
-    "CompositionDependencies",
-    "CompositionGapError",
     "ConfirmationEnginePort",
     "DecisionEnginePort",
     "ExecutionPort",
@@ -33,5 +30,4 @@ __all__ = [
     "RiskEnginePort",
     "SetupClassifierPort",
     "TradeJournalPort",
-    "compose_runtime",
 ]
