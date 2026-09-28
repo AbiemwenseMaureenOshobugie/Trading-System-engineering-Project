@@ -57,6 +57,22 @@ class ObservationLifecycleCoordinator:
         self._runner = runner
         self._poll_offset = poll_offset
 
+    def next_invocation_at(
+        self,
+        *,
+        instrument: str,
+        now: datetime,
+    ) -> datetime | None:
+        """Return the next observation-side operational invocation boundary."""
+        current = self._utc(now)
+        boundary = self._boundary.next_completed_boundary(
+            instrument=instrument,
+            now=current,
+        )
+        if boundary is None:
+            return None
+        return self._utc(boundary) + self._poll_offset
+
     def opportunity(self, *, instrument: str, now: datetime | None = None) -> ObservationInvocationOpportunity | None:
         current = self._utc(now if now is not None else self._now())
         boundary = self._boundary.latest_completed_boundary(instrument=instrument, now=current)
