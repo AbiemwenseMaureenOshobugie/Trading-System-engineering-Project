@@ -22,6 +22,8 @@ from trading_system.domain import (
     ExecutionRecord, ExitExecutionRecord, ExitInstruction,
     GovernanceRequest,
     GovernanceResult,
+    GoverningKeyLevelRequest,
+    GoverningKeyLevelResult,
     KeyLevel,
     MarketCandle,
     MarketStructureState,
@@ -56,6 +58,13 @@ class KeyLevelEnginePort(Protocol):
     def detect(
         self, *, candles: Sequence[MarketCandle], structure: MarketStructureState
     ) -> Sequence[KeyLevel]: ...
+
+
+@runtime_checkable
+class GoverningKeyLevelPort(Protocol):
+    """Select the single governing Key Level for an H1 thesis."""
+
+    def select(self, request: GoverningKeyLevelRequest) -> GoverningKeyLevelResult: ...
 
 
 @runtime_checkable
@@ -143,6 +152,7 @@ __all__ = [
     "DecisionEnginePort",
     "ExecutionPort", "ExitExecutionPort",
     "GovernanceEnginePort",
+    "GoverningKeyLevelPort",
     "H1MarketStructurePort",
     "KeyLevelEnginePort",
     "MarketDataPort",

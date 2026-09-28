@@ -18,6 +18,7 @@ from .enums import (
     ExitExecutionState,
     ExitType,
     GovernanceStatus,
+    GoverningKeyLevelStatus,
     KeyLevelSource,
     Regime,
     RiskStatus,
@@ -101,6 +102,27 @@ class KeyLevel:
     updated_at: datetime
     evidence_refs: tuple[str, ...]
     state_history: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class GoverningKeyLevelRequest:
+    """Inputs required to select the governing Key Level for one H1 thesis."""
+
+    structure: MarketStructureState
+    direction: Direction
+    key_levels: tuple[KeyLevel, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class GoverningKeyLevelResult:
+    """Deterministic governing Key-Level selection outcome."""
+
+    direction: Direction
+    controlling_level_evidence_ref: Optional[str]
+    selected_key_level: Optional[KeyLevel]
+    eligible_key_level_ids: tuple[str, ...]
+    status: GoverningKeyLevelStatus
+    reason_codes: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)

@@ -2,7 +2,7 @@
 
 from .enums import (
     ConfirmationType, DecisionStatus, Direction, ExecutionState, ExitExecutionState, ExitType,
-    GovernanceStatus, KeyLevelSource, Regime, RiskStatus, SwingKind, Timeframe,
+    GovernanceStatus, GoverningKeyLevelStatus, KeyLevelSource, Regime, RiskStatus, SwingKind, Timeframe,
 )
 from .journal import TradeJournalEntry
 from .observation import (
@@ -17,7 +17,7 @@ from .observation import (
 )
 from .models import (
     AuditRecord, ConfirmationSequence, DecisionCandidate, DecisionRequest,
-    DecisionResult, ExecutionRecord, ExitExecutionRecord, ExitInstruction, ExitPaperFill, GovernanceRequest, GovernanceResult, Position,
+    DecisionResult, ExecutionRecord, GoverningKeyLevelRequest, GoverningKeyLevelResult, ExitExecutionRecord, ExitInstruction, ExitPaperFill, GovernanceRequest, GovernanceResult, Position,
     KeyLevel, MarketCandle, MarketStructureState, PaperFill, PaperOrder,
     PriceZone, RiskRequest, RiskResult, SwingPoint,
 )
@@ -35,7 +35,7 @@ __all__ = [
     "ObservationStatus", "ConfirmationSequence", "ConfirmationType",
     "DecisionCandidate", "DecisionRequest", "DecisionResult", "DecisionStatus",
     "Direction", "ExecutionRecord", "ExecutionState", "ExitExecutionRecord", "ExitExecutionState", "ExitInstruction", "ExitPaperFill", "ExitType", "GovernanceRequest",
-    "GovernanceResult", "GovernanceStatus", "KeyLevel", "KeyLevelSource",
+    "GovernanceResult", "GovernanceStatus", "GoverningKeyLevelRequest", "GoverningKeyLevelResult", "GoverningKeyLevelStatus", "KeyLevel", "KeyLevelSource",
     "MarketCandle", "MarketStructureState", "PaperFill", "PaperOrder",
     "PerformanceSnapshot", "Position", "PriceZone", "Regime", "RiskRequest", "RiskResult",
     "RiskStatus", "SwingKind", "SwingPoint", "Timeframe", "TradeJournalEntry",
