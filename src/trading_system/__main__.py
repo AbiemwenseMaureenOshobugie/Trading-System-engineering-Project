@@ -66,17 +66,16 @@ def _credential_resolver(reference: str) -> str:
 def main() -> int:
     try:
         config = _runtime_config_from_environment()
-        # The business-specific capabilities remain explicit until their
-        # production contracts are implemented. No fake implementations are
-        # installed by the entrypoint.
-        raise CompositionGapError(
-            (
-                "governing_key_level_selection",
-                "setup_classification",
-                "risk_governance_qualification_context",
-                "observation_history_policy",
-            )
+        # No fake business implementations are installed here. The single
+        # composition root reports any unresolved capabilities explicitly.
+        dependencies = CompositionDependencies(
+            credential_resolver=_credential_resolver,
+            history_window_resolver=None,
+            key_level_selector=None,
+            setup_classifier=None,
+            qualification_context=None,
         )
+        compose_runtime(config, dependencies=dependencies)
     except CompositionGapError as exc:
         print("ASTER runtime composition gap:", *exc.args[0], sep=" ", file=sys.stderr)
         return 2
