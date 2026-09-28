@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Mapping
+from typing import Callable
 
 from trading_system.adapters.observation_sqlite import SQLiteObservationRepository
 from trading_system.adapters.twelve_data.adapter import TwelveDataMarketDataAdapter
@@ -28,10 +28,8 @@ from trading_system.observation import (
 )
 from trading_system.risk import RiskEngine
 from trading_system.runtime import (
-    DataProviderConfig,
     FileRuntimeOwnership,
     RuntimeAuditPort,
-    RuntimeAuditRecord,
     RuntimeConfig,
     RuntimeControl,
 )
@@ -100,7 +98,7 @@ def compose_runtime(
     market_data_config = TwelveDataAdapterConfig(
         api_key=api_key,
         symbol_map=dict(config.data_provider.symbol_mappings),
-        endpoint=config.data_provider.endpoint,
+        base_url=config.data_provider.endpoint or "https://api.twelvedata.com",
     )
     market_data = TwelveDataMarketDataAdapter(config=market_data_config, clock=now)
 
