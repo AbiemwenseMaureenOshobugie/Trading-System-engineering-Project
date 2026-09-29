@@ -33,6 +33,7 @@ from trading_system.runtime import (
     RuntimeControl,
 )
 from trading_system.strategy.confirmation import M15ConfirmationEngine
+from trading_system.strategy.classification import SetupClassifier
 from trading_system.strategy.governing_key_level import GoverningKeyLevelEngine
 from trading_system.strategy.key_levels import KeyLevelDetectionEngine
 from trading_system.strategy.market_structure import H1MarketStructureEngine
@@ -51,7 +52,6 @@ class CompositionDependencies:
 
     credential_resolver: Callable[[str], str]
     history_window_resolver: Callable[[str, datetime], object]
-    setup_classifier: SetupClassifierPort
     qualification_context: ObservationQualificationContextPort
 
 
@@ -115,6 +115,7 @@ def compose_runtime(
     execution = ExecutionEngine(audit_port=audit, clock=now)
 
     governing_key_level = GoverningKeyLevelEngine()
+    setup_classifier = SetupClassifier()
 
     runner = ObservationRunner(
         market_data=market_data,
@@ -124,7 +125,7 @@ def compose_runtime(
         key_level_engine=key_levels,
         key_level_selector=governing_key_level,
         confirmation_engine=confirmation,
-        setup_classifier=dependencies.setup_classifier,
+        setup_classifier=setup_classifier,
         risk_engine=risk,
         governance_engine=governance,
         decision_engine=decision,
@@ -179,8 +180,6 @@ def _validate_dependencies(
         missing.append("credential_resolution")
     if dependencies.history_window_resolver is None:
         missing.append("observation_history_policy")
-    if dependencies.setup_classifier is None:
-        missing.append("setup_classification")
     if dependencies.qualification_context is None:
         missing.append("risk_governance_qualification_context")
     return tuple(missing)

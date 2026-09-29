@@ -87,7 +87,6 @@ def dependencies():
             m15_start=boundary.replace(hour=boundary.hour - 2),
             m15_end=boundary,
         ),
-        setup_classifier=Classifier(),
         qualification_context=Qualification(),
     )
 
@@ -127,7 +126,6 @@ def test_composition_fails_closed_without_unresolved_capabilities(tmp_path):
             dependencies=CompositionDependencies(
                 credential_resolver=None,
                 history_window_resolver=None,
-                setup_classifier=None,
                 qualification_context=None,
             ),
             clock=lambda: NOW,
