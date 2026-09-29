@@ -84,6 +84,9 @@ def test_cp2_ordinary_buy_triggers_on_c3() -> None:
     assert cp2
     assert cp2[0].state == "TRIGGERED"
     assert cp2[0].signal_status == "SIGNAL_TRIGGERED"
+    assert cp2[0].symbol == "EURUSD"
+    assert cp2[0].signal_timestamp == candles[2].timestamp_close
+    assert cp2[0].signal_entry_price == candles[2].close
 
 
 def test_cp2_ordinary_buy_expires_when_c3_fails() -> None:

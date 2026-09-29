@@ -127,7 +127,19 @@ class M15ConfirmationEngine(ConfirmationEnginePort):
             return _sequence(ConfirmationType.CP1, direction, key_level, "INVALIDATED", refs, reference.swing.price, "SIGNAL_NONE", "H1_INVALIDATION_BEFORE_TRIGGER")
         passed = trigger.close > rejection.high if direction is Direction.BUY else trigger.close < rejection.low
         if passed:
-            return _sequence(ConfirmationType.CP1, direction, key_level, "TRIGGERED", refs, trigger.close, "SIGNAL_TRIGGERED", None)
+            return _sequence(
+                ConfirmationType.CP1,
+                direction,
+                key_level,
+                "TRIGGERED",
+                refs,
+                trigger.close,
+                "SIGNAL_TRIGGERED",
+                None,
+                symbol=trigger.symbol,
+                signal_timestamp=trigger.timestamp_close,
+                signal_entry_price=trigger.close,
+            )
         return _sequence(ConfirmationType.CP1, direction, key_level, "EXPIRED", refs, reference.swing.price, "SIGNAL_NONE", "CONFIRMATION_FAILED")
 
     @staticmethod
@@ -162,7 +174,21 @@ class M15ConfirmationEngine(ConfirmationEnginePort):
             state = "TRIGGERED" if confirmed else "EXPIRED"
             signal = "SIGNAL_TRIGGERED" if confirmed else "SIGNAL_NONE"
             reason = None if confirmed else "CONFIRMATION_FAILED"
-            results.append(_sequence(ConfirmationType.CP2, direction, key_level, state, refs, sweep_extreme, signal, reason))
+            results.append(
+                _sequence(
+                    ConfirmationType.CP2,
+                    direction,
+                    key_level,
+                    state,
+                    refs,
+                    sweep_extreme,
+                    signal,
+                    reason,
+                    symbol=c3.symbol,
+                    signal_timestamp=c3.timestamp_close if confirmed else None,
+                    signal_entry_price=c3.close if confirmed else None,
+                )
+            )
         return tuple(results)
 
 
@@ -234,7 +260,20 @@ def _touches_price(candle, price):
     return candle.low <= price <= candle.high
 
 
-def _sequence(confirmation_type, direction, key_level, state, candle_refs, controlling_extreme, signal_status, invalidation_reason):
+def _sequence(
+    confirmation_type,
+    direction,
+    key_level,
+    state,
+    candle_refs,
+    controlling_extreme,
+    signal_status,
+    invalidation_reason,
+    *,
+    symbol="",
+    signal_timestamp=None,
+    signal_entry_price=None,
+):
     raw = "|".join((CONFIRMATION_VERSION, confirmation_type.value, direction.value, key_level.key_level_id, *candle_refs)).encode()
     return ConfirmationSequence(
         setup_id="CN-" + sha256(raw).hexdigest()[:16],
@@ -246,6 +285,9 @@ def _sequence(confirmation_type, direction, key_level, state, candle_refs, contr
         controlling_extreme=controlling_extreme,
         signal_status=signal_status,
         invalidation_reason=invalidation_reason,
+        symbol=symbol,
+        signal_timestamp=signal_timestamp,
+        signal_entry_price=signal_entry_price,
     )
 
 

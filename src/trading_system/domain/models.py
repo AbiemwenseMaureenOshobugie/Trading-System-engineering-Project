@@ -138,6 +138,9 @@ class ConfirmationSequence:
     controlling_extreme: Optional[Decimal]
     signal_status: str
     invalidation_reason: Optional[str]
+    symbol: str = ""
+    signal_timestamp: Optional[datetime] = None
+    signal_entry_price: Optional[Decimal] = None
 
 
 @dataclass(frozen=True, slots=True)
