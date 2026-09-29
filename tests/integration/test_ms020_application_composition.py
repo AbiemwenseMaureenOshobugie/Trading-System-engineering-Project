@@ -33,11 +33,6 @@ UTC = timezone.utc
 NOW = datetime(2026, 9, 28, 10, 0, tzinfo=UTC)
 
 
-class Selector:
-    def select(self, *, key_levels, structure, direction):
-        return tuple(key_levels)
-
-
 class Classifier:
     def classify(self, confirmations):
         return ()
@@ -92,10 +87,37 @@ def dependencies():
             m15_start=boundary.replace(hour=boundary.hour - 2),
             m15_end=boundary,
         ),
-        key_level_selector=Selector(),
         setup_classifier=Classifier(),
         qualification_context=Qualification(),
     )
+
+
+class Classifier:
+    def classify(self, confirmations):
+        return ()
+
+
+class Qualification:
+    def risk_request(self, *, candidate, key_levels, boundary):
+        return RiskRequest(
+            candidate=candidate,
+            active_key_levels=tuple(key_levels),
+            setup_key_level_id=None,
+            account_equity=Decimal("10000"),
+            spread=Decimal("0"),
+            slippage=Decimal("0"),
+            noise=Decimal("0"),
+            volatility_adjustment=Decimal("0"),
+            value_per_price_unit=Decimal("100000"),
+        )
+
+    def governance_request(self, *, candidate, boundary):
+        return GovernanceRequest(
+            candidate=candidate,
+            instrument_session_eligible=True,
+            daily_trade_count=0,
+            daily_loss_count=0,
+        )
 
 
 def test_composition_fails_closed_without_unresolved_capabilities(tmp_path):
@@ -105,7 +127,6 @@ def test_composition_fails_closed_without_unresolved_capabilities(tmp_path):
             dependencies=CompositionDependencies(
                 credential_resolver=None,
                 history_window_resolver=None,
-                key_level_selector=None,
                 setup_classifier=None,
                 qualification_context=None,
             ),
