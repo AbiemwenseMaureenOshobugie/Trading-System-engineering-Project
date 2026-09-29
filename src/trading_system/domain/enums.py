@@ -67,6 +67,12 @@ class ExitType(StrEnum):
     STOP_LOSS = "STOP_LOSS"
     TARGET = "TARGET"
 
+class GoverningKeyLevelStatus(StrEnum):
+    SELECTED = "SELECTED"
+    NO_GOVERNING_KEY_LEVEL = "NO_GOVERNING_KEY_LEVEL"
+    STRUCTURAL_CONSISTENCY_FAILURE = "STRUCTURAL_CONSISTENCY_FAILURE"
+
+
 class ExitExecutionState(StrEnum):
     CREATED = "CREATED"
     AUTHORIZED = "AUTHORIZED"
