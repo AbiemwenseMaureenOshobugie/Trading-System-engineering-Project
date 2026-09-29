@@ -21,7 +21,6 @@ from trading_system.governance import GovernanceEngine
 from trading_system.observation import (
     ExplicitObservationHistoryResolver,
     MarketDataH1BoundaryResolver,
-    ObservationKeyLevelSelectorPort,
     ObservationQualificationContextPort,
     ObservationRunner,
     ObservationLifecycleCoordinator,
@@ -34,6 +33,7 @@ from trading_system.runtime import (
     RuntimeControl,
 )
 from trading_system.strategy.confirmation import M15ConfirmationEngine
+from trading_system.strategy.governing_key_level import GoverningKeyLevelEngine
 from trading_system.strategy.key_levels import KeyLevelDetectionEngine
 from trading_system.strategy.market_structure import H1MarketStructureEngine
 
@@ -51,7 +51,6 @@ class CompositionDependencies:
 
     credential_resolver: Callable[[str], str]
     history_window_resolver: Callable[[str, datetime], object]
-    key_level_selector: ObservationKeyLevelSelectorPort
     setup_classifier: SetupClassifierPort
     qualification_context: ObservationQualificationContextPort
 
@@ -115,13 +114,15 @@ def compose_runtime(
     audit = _AuditSink()
     execution = ExecutionEngine(audit_port=audit, clock=now)
 
+    governing_key_level = GoverningKeyLevelEngine()
+
     runner = ObservationRunner(
         market_data=market_data,
         boundary_port=boundary,
         history_resolver=history,
         structure_engine=structure,
         key_level_engine=key_levels,
-        key_level_selector=dependencies.key_level_selector,
+        key_level_selector=governing_key_level,
         confirmation_engine=confirmation,
         setup_classifier=dependencies.setup_classifier,
         risk_engine=risk,
@@ -178,8 +179,6 @@ def _validate_dependencies(
         missing.append("credential_resolution")
     if dependencies.history_window_resolver is None:
         missing.append("observation_history_policy")
-    if dependencies.key_level_selector is None:
-        missing.append("governing_key_level_selection")
     if dependencies.setup_classifier is None:
         missing.append("setup_classification")
     if dependencies.qualification_context is None:
