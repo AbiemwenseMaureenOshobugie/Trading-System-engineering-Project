@@ -33,7 +33,9 @@ from trading_system.domain import (
     ObservationResult,
     ObservationRevision,
     ObservationStatus,
-    RiskRequest,
+    DecisionResult,
+    DecisionStatus,
+    QualificationContextStatus,
     Timeframe,
 )
 from .repository import ObservationRevisionConflict
@@ -80,22 +82,6 @@ class ObservationKeyLevelSelectorPort(Protocol):
     def select(
         self, *, key_levels: Sequence[KeyLevel], structure, direction: str
     ) -> Sequence[KeyLevel]: ...
-
-
-class ObservationQualificationContextPort(Protocol):
-    """Supply already-defined operational inputs required by Risk/Governance."""
-
-    def risk_request(
-        self,
-        *,
-        candidate: DecisionCandidate,
-        key_levels: Sequence[KeyLevel],
-        boundary: datetime,
-    ) -> RiskRequest: ...
-
-    def governance_request(
-        self, *, candidate: DecisionCandidate, boundary: datetime
-    ): ...
 
 
 class ObservationRunner:
@@ -234,20 +220,35 @@ class ObservationRunner:
 
             outcomes = []
             for candidate in candidates:
-                risk_request = self._qualification.risk_request(
+                qualification_timestamp = self._utc(self._clock())
+                context = self._qualification.qualify(
                     candidate=candidate,
                     key_levels=key_levels,
+                    structure=structure,
                     boundary=boundary,
+                    qualification_timestamp=qualification_timestamp,
                 )
-                risk_result = self._risk.assess(risk_request)
+                if context.status is QualificationContextStatus.UNAVAILABLE:
+                    outcomes.append(
+                        CandidateOutcome(
+                            candidate=candidate,
+                            risk_result=None,
+                            governance_result=None,
+                            decision_result=DecisionResult(
+                                decision_id=candidate.decision_id,
+                                status=DecisionStatus.WAIT,
+                                reason_codes=context.reason_codes,
+                            ),
+                        )
+                    )
+                    continue
+
+                risk_result = self._risk.assess(context.risk_request)
 
                 governance_result = None
                 if risk_result.status.value == "RISK_AUTHORIZED":
-                    governance_request = self._qualification.governance_request(
-                        candidate=candidate, boundary=boundary
-                    )
                     governance_result = self._governance.authorize(
-                        governance_request
+                        context.governance_request
                     )
 
                 decision_result = self._decision.decide(
