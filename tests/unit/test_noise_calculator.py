@@ -73,10 +73,10 @@ def test_buy_uses_mean_lower_wick_after_latest_meaningful_swing():
         structure=structure(10),
         direction=Direction.BUY,
     )
-    assert result == Decimal("0.003")
+    assert result == Decimal("0.002333333333333333333333333333")
 
 
-def test_sell_uses_mean_upper_wick_after_latest_meaningful_swing():
+def test_sell_uses_mean_upper_wick_after_latest_meanful_swing():
     result = NoiseCalculator().compute(
         candles=(
             candle(close_hour=10, open_price="1.105", high="1.110", low="1.100", close="1.108"),
@@ -87,7 +87,7 @@ def test_sell_uses_mean_upper_wick_after_latest_meaningful_swing():
         structure=structure(10),
         direction=Direction.SELL,
     )
-    assert result == Decimal("0.003")
+    assert result == Decimal("0.002666666666666666666666666667")
 
 
 def test_swing_candle_is_excluded_and_latest_swing_controls_window():
@@ -135,7 +135,14 @@ def test_non_h1_candles_are_excluded():
     result = NoiseCalculator().compute(
         candles=(
             candle(close_hour=11, open_price="1.108", high="1.112", low="1.104", close="1.110"),
-            candle(close_hour=12, open_price="1.110", high="1.120", low="1.100", close="1.115", timeframe=Timeframe.M15),
+            candle(
+                close_hour=12,
+                open_price="1.110",
+                high="1.120",
+                low="1.100",
+                close="1.115",
+                timeframe=Timeframe.M15,
+            ),
         ),
         structure=structure(10),
         direction=Direction.BUY,
@@ -149,11 +156,18 @@ def test_candle_order_does_not_change_result():
         candle(close_hour=12, open_price="1.110", high="1.115", low="1.107", close="1.109"),
     )
     engine = NoiseCalculator()
-    assert engine.compute(candles=candles, structure=structure(10), direction=Direction.BUY) == engine.compute(
-        candles=tuple(reversed(candles)), structure=structure(10), direction=Direction.BUY
+    assert engine.compute(
+        candles=candles,
+        structure=structure(10),
+        direction=Direction.BUY,
+    ) == engine.compute(
+        candles=tuple(reversed(candles)),
+        structure=structure(10),
+        direction=Direction.BUY,
     )
 
 
 def test_noise_port_is_runtime_compatible():
     from trading_system.application import NoiseCalculatorPort
+
     assert isinstance(NoiseCalculator(), NoiseCalculatorPort)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
 
@@ -16,7 +17,7 @@ class NoiseCalculator:
     def compute(
         self,
         *,
-        candles: tuple[MarketCandle, ...],
+        candles: Sequence[MarketCandle],
         structure: MarketStructureState,
         direction: Direction,
     ) -> Decimal:
