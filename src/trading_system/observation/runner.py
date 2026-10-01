@@ -35,9 +35,9 @@ from trading_system.domain import (
     ObservationStatus,
     DecisionResult,
     DecisionStatus,
-    QualificationContextStatus,
     Timeframe,
 )
+from trading_system.domain.enums import QualificationContextStatus
 from .repository import ObservationRevisionConflict
 
 MS014_VERSION = "MS-0.14"
