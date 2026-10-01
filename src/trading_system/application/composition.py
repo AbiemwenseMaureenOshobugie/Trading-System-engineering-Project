@@ -13,7 +13,7 @@ from trading_system.adapters.twelve_data.adapter import TwelveDataMarketDataAdap
 from trading_system.adapters.twelve_data.config import TwelveDataAdapterConfig
 from trading_system.application.ports import (
     AuditPort,
-    SetupClassifierPort,
+    ObservationQualificationContextPort,
 )
 from trading_system.decision import DecisionEngine
 from trading_system.execution import ExecutionEngine
@@ -21,7 +21,6 @@ from trading_system.governance import GovernanceEngine
 from trading_system.observation import (
     ExplicitObservationHistoryResolver,
     MarketDataH1BoundaryResolver,
-    ObservationQualificationContextPort,
     ObservationRunner,
     ObservationLifecycleCoordinator,
 )
