@@ -14,14 +14,14 @@ from trading_system.domain import (
     ConfirmationType,
     DecisionCandidate,
     GovernanceRequest,
-    QualificationContextResult,
-    QualificationContextStatus,
     KeyLevel,
     MarketCandle,
     ObservationDataWindow,
     RiskRequest,
     Timeframe,
 )
+from trading_system.domain.qualification import QualificationContextResult
+from trading_system.domain.enums import QualificationContextStatus
 from trading_system.runtime import (
     DataProviderConfig,
     InstrumentConfig,
