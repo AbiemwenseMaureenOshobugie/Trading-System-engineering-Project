@@ -7,6 +7,7 @@ not contain strategy rules, risk formulas, governance rules, or broker logic.
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Protocol, Sequence, runtime_checkable
 
 from trading_system.domain import (
@@ -15,6 +16,7 @@ from trading_system.domain import (
     DecisionCandidate,
     DecisionRequest,
     DecisionResult,
+    Direction,
     ExecutionRecord,
     GovernanceRequest,
     GovernanceResult,
@@ -77,6 +79,19 @@ class SetupClassifierPort(Protocol):
 
 
 @runtime_checkable
+class NoiseCalculatorPort(Protocol):
+    """Compute directional H1 Noise independently of the Risk Engine."""
+
+    def compute(
+        self,
+        *,
+        candles: Sequence[MarketCandle],
+        structure: MarketStructureState,
+        direction: Direction,
+    ) -> Decimal: ...
+
+
+@runtime_checkable
 class RiskEnginePort(Protocol):
     """Qualify and size a strategy candidate using downstream risk inputs."""
 
@@ -127,6 +142,7 @@ __all__ = [
     "H1MarketStructurePort",
     "KeyLevelEnginePort",
     "MarketDataPort",
+    "NoiseCalculatorPort",
     "RiskEnginePort",
     "SetupClassifierPort",
 ]

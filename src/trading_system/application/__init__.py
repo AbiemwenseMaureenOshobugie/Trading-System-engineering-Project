@@ -1,8 +1,4 @@
-"""Application-layer ports for the trading system.
-
-Ports define dependency direction without implementing trading behavior.
-Concrete adapters and services are introduced in later milestones.
-"""
+"""Application-layer ports."""
 
 from .ports import (
     AuditPort,
@@ -13,6 +9,7 @@ from .ports import (
     H1MarketStructurePort,
     KeyLevelEnginePort,
     MarketDataPort,
+    NoiseCalculatorPort,
     RiskEnginePort,
     SetupClassifierPort,
 )
@@ -26,6 +23,7 @@ __all__ = [
     "H1MarketStructurePort",
     "KeyLevelEnginePort",
     "MarketDataPort",
+    "NoiseCalculatorPort",
     "RiskEnginePort",
     "SetupClassifierPort",
 ]
