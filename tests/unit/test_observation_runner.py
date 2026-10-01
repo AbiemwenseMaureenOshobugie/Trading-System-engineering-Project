@@ -15,8 +15,6 @@ from trading_system.domain import (
     GovernanceRequest,
     GovernanceResult,
     GovernanceStatus,
-    QualificationContextResult,
-    QualificationContextStatus,
     KeyLevel,
     KeyLevelSource,
     MarketCandle,
@@ -35,6 +33,8 @@ from trading_system.domain import (
     SwingKind,
     Timeframe,
 )
+from trading_system.domain.qualification import QualificationContextResult
+from trading_system.domain.enums import QualificationContextStatus
 from trading_system.observation import (
     InMemoryObservationRepository,
     ObservationExecutionError,
