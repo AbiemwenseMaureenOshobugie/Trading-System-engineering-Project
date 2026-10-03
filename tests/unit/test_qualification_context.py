@@ -7,7 +7,6 @@ from trading_system.domain import (
     ConfirmationType,
     DecisionCandidate,
     Direction,
-    GovernanceStatus,
     KeyLevel,
     KeyLevelSource,
     MarketStructureState,

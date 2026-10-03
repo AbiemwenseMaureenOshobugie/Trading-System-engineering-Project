@@ -26,7 +26,6 @@ Risk Engine  Governance Engine
 - D03: Daily trade/loss counts come from authoritative completed-trade execution history.
 - D04: Required context is captured at qualification time.
 - D05: Missing or invalid required context produces a structured fail-closed result.
-- D06: Session eligibility is a required prerequisite. Until an authoritative session-eligibility source exists, the assembler fails closed with `SESSION_ELIGIBILITY_UNAVAILABLE`. It must never infer session hours or substitute a hard-coded boolean.
 
 ## Provider authority
 
@@ -35,14 +34,11 @@ Risk Engine  Governance Engine
 | `account_equity` | `AccountStatePort` |
 | `spread` | `MarketExecutionContextPort` |
 | `slippage` | `ExecutionHistoryPort` |
-| `daily_trade_count` | `ExecutionHistoryPort` |
-| `daily_loss_count` | `ExecutionHistoryPort` |
 | `noise` | `NoisePolicyPort` |
 | `volatility_adjustment` | `VolatilityPolicyPort` |
 | `value_per_price_unit` | `InstrumentSpecificationPort` |
-| `instrument_session_eligible` | Explicit prerequisite; authoritative source not yet defined |
 
-The six provider ports remain unchanged. D06 does not add a seventh provider port.
+The provider interfaces establish authority boundaries only. They do not prescribe broker APIs or concrete implementations.
 
 ## Qualification result
 
