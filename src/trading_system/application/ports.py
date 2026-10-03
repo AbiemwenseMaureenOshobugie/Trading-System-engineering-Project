@@ -192,6 +192,13 @@ class ObservationQualificationContextPort(Protocol):
 
 
 @runtime_checkable
+class SessionPolicyPort(Protocol):
+    """Supply the authoritative MS-0.8 session-policy result."""
+
+    def evaluate(self, timestamp_utc: datetime): ...
+
+
+@runtime_checkable
 class TradeJournalPort(Protocol):
     """Append and retrieve immutable completed-trade journal entries."""
 
@@ -229,5 +236,5 @@ __all__ = [
     "GoverningKeyLevelPort", "H1MarketStructurePort", "InstrumentSpecificationPort",
     "KeyLevelEnginePort", "MarketDataPort", "MarketExecutionContextPort",
     "NoisePolicyPort", "ObservationQualificationContextPort", "ObservationRepositoryPort",
-    "RiskEnginePort", "SetupClassifierPort", "TradeJournalPort", "VolatilityPolicyPort",
+    "RiskEnginePort", "SetupClassifierPort", "SessionPolicyPort", "TradeJournalPort", "VolatilityPolicyPort",
 ]
