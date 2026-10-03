@@ -33,6 +33,8 @@ from trading_system.domain import (
     SwingKind,
     Timeframe,
 )
+from trading_system.domain.qualification import QualificationContextResult
+from trading_system.domain.enums import QualificationContextStatus
 from trading_system.observation import (
     InMemoryObservationRepository,
     ObservationExecutionError,
@@ -209,25 +211,36 @@ class Decision:
 
 
 class Context:
-    def risk_request(self, *, candidate, key_levels, boundary):
-        return RiskRequest(
-            candidate=candidate,
-            active_key_levels=tuple(key_levels),
-            setup_key_level_id="KL-1",
-            account_equity=Decimal("10000"),
-            spread=Decimal("0"),
-            slippage=Decimal("0"),
-            noise=Decimal("0"),
-            volatility_adjustment=Decimal("0"),
-            value_per_price_unit=Decimal("100000"),
-        )
-
-    def governance_request(self, *, candidate, boundary):
-        return GovernanceRequest(
-            candidate=candidate,
-            instrument_session_eligible=True,
-            daily_trade_count=0,
-            daily_loss_count=0,
+    def qualify(
+        self,
+        *,
+        candidate,
+        key_levels,
+        structure,
+        boundary,
+        qualification_timestamp,
+    ):
+        return QualificationContextResult(
+            status=QualificationContextStatus.AVAILABLE,
+            qualification_timestamp=qualification_timestamp,
+            risk_request=RiskRequest(
+                candidate=candidate,
+                active_key_levels=tuple(key_levels),
+                setup_key_level_id="KL-1",
+                account_equity=Decimal("10000"),
+                spread=Decimal("0"),
+                slippage=Decimal("0"),
+                noise=Decimal("0"),
+                volatility_adjustment=Decimal("0"),
+                value_per_price_unit=Decimal("100000"),
+            ),
+            governance_request=GovernanceRequest(
+                candidate=candidate,
+                instrument_session_eligible=True,
+                daily_trade_count=0,
+                daily_loss_count=0,
+            ),
+            reason_codes=(),
         )
 
 
@@ -354,3 +367,47 @@ def test_unexpected_component_failure_raises_application_error():
 
     with pytest.raises(ObservationExecutionError):
         r.run(instrument="EURUSD")
+
+
+def test_unavailable_qualification_context_does_not_invoke_downstream_engines():
+    class UnavailableContext(Context):
+        def qualify(self, **kwargs):
+            return QualificationContextResult(
+                status=QualificationContextStatus.UNAVAILABLE,
+                qualification_timestamp=BOUNDARY + timedelta(minutes=2),
+                risk_request=None,
+                governance_request=None,
+                reason_codes=("SPREAD_UNAVAILABLE",),
+            )
+
+    class ExplodingRisk(Risk):
+        def assess(self, request):
+            raise AssertionError("risk must not run on unavailable context")
+
+    class ExplodingGovernance(Governance):
+        def authorize(self, request):
+            raise AssertionError("governance must not run on unavailable context")
+
+    r = ObservationRunner(
+        market_data=Market(),
+        boundary_port=Boundary(),
+        history_resolver=History(),
+        structure_engine=Structure(),
+        key_level_engine=Levels(),
+        key_level_selector=Selector(),
+        confirmation_engine=Confirmation(),
+        setup_classifier=Classifier((candidate("D-CONTEXT"),)),
+        risk_engine=ExplodingRisk(),
+        governance_engine=ExplodingGovernance(),
+        decision_engine=Decision(),
+        qualification_context=UnavailableContext(),
+        repository=InMemoryObservationRepository(),
+        audit_port=Audit(),
+        clock=lambda: BOUNDARY + timedelta(minutes=1),
+    )
+    result = r.run(instrument="EURUSD")
+    outcome = result.revision.candidate_outcomes[0]
+    assert outcome.risk_result is None
+    assert outcome.governance_result is None
+    assert outcome.decision_result.status is DecisionStatus.WAIT
+    assert outcome.decision_result.reason_codes == ("SPREAD_UNAVAILABLE",)

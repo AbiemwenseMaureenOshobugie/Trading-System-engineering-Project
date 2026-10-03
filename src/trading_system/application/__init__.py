@@ -14,6 +14,7 @@ from .ports import (
     ObservationRepositoryPort,
     RiskEnginePort,
     SetupClassifierPort,
+    SessionPolicyPort,
     TradeJournalPort,
 )
 
@@ -31,5 +32,6 @@ __all__ = [
     "ObservationRepositoryPort",
     "RiskEnginePort",
     "SetupClassifierPort",
+    "SessionPolicyPort",
     "TradeJournalPort",
 ]

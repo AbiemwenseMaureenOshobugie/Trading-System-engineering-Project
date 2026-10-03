@@ -56,6 +56,11 @@ class DecisionStatus(StrEnum):
     GOVERNANCE_BLOCKED = "GOVERNANCE_BLOCKED"
 
 
+class QualificationContextStatus(StrEnum):
+    AVAILABLE = "AVAILABLE"
+    UNAVAILABLE = "QUALIFICATION_CONTEXT_UNAVAILABLE"
+
+
 class ExecutionState(StrEnum):
     AUTHORIZED = "AUTHORIZED"
     SUBMITTED = "SUBMITTED"

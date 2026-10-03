@@ -7,6 +7,7 @@ not contain strategy rules, risk formulas, governance rules, or broker logic.
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING, Protocol, Sequence, runtime_checkable
 
 if TYPE_CHECKING:
@@ -31,6 +32,7 @@ from trading_system.domain import (
     RiskResult,
     Timeframe,
 )
+from trading_system.domain.qualification import QualificationContextResult
 
 
 @runtime_checkable
@@ -125,6 +127,78 @@ class ExecutionPort(Protocol):
 
 
 @runtime_checkable
+class AccountStatePort(Protocol):
+    """Supply authoritative account equity at qualification time."""
+
+    def get_account_equity(self, *, at: datetime) -> Decimal: ...
+
+
+@runtime_checkable
+class MarketExecutionContextPort(Protocol):
+    """Supply authoritative current market execution context."""
+
+    def get_spread(self, *, symbol: str, at: datetime) -> Decimal: ...
+
+
+@runtime_checkable
+class ExecutionHistoryPort(Protocol):
+    """Supply authoritative completed-trade execution history facts."""
+
+    def get_slippage(self, *, symbol: str, at: datetime) -> Decimal: ...
+
+    def get_daily_trade_count(self, *, symbol: str, at: datetime) -> int: ...
+
+    def get_daily_loss_count(self, *, symbol: str, at: datetime) -> int: ...
+
+
+@runtime_checkable
+class NoisePolicyPort(Protocol):
+    """Supply the authoritative directional H1 noise value."""
+
+    def get_noise(
+        self, *, candidate: DecisionCandidate, structure: MarketStructureState, at: datetime
+    ) -> Decimal: ...
+
+
+@runtime_checkable
+class VolatilityPolicyPort(Protocol):
+    """Supply the authoritative volatility adjustment."""
+
+    def get_volatility_adjustment(
+        self, *, candidate: DecisionCandidate, at: datetime
+    ) -> Decimal: ...
+
+
+@runtime_checkable
+class InstrumentSpecificationPort(Protocol):
+    """Supply authoritative account-currency value per price unit."""
+
+    def get_value_per_price_unit(self, *, symbol: str, at: datetime) -> Decimal: ...
+
+
+@runtime_checkable
+class ObservationQualificationContextPort(Protocol):
+    """Assemble authoritative Risk/Governance requests at qualification time."""
+
+    def qualify(
+        self,
+        *,
+        candidate: DecisionCandidate,
+        key_levels: Sequence[KeyLevel],
+        structure: MarketStructureState,
+        boundary: datetime,
+        qualification_timestamp: datetime,
+    ) -> QualificationContextResult: ...
+
+
+@runtime_checkable
+class SessionPolicyPort(Protocol):
+    """Supply the authoritative MS-0.8 session-policy result."""
+
+    def evaluate(self, timestamp_utc: datetime): ...
+
+
+@runtime_checkable
 class TradeJournalPort(Protocol):
     """Append and retrieve immutable completed-trade journal entries."""
 
@@ -136,30 +210,15 @@ class TradeJournalPort(Protocol):
 @runtime_checkable
 class ExitExecutionPort(Protocol):
     """Submit an authorized exit instruction for an existing open position."""
+
     def submit(self, *, instruction: ExitInstruction, broker_position_id: str) -> ExitExecutionRecord: ...
+
 
 @runtime_checkable
 class AuditPort(Protocol):
     """Record material boundary events without owning business rules."""
 
     def record(self, event: AuditRecord) -> None: ...
-
-
-__all__ = [
-    "AuditPort",
-    "TradeJournalPort",
-    "ConfirmationEnginePort",
-    "DecisionEnginePort",
-    "ExecutionPort", "ExitExecutionPort",
-    "GovernanceEnginePort",
-    "GoverningKeyLevelPort",
-    "H1MarketStructurePort",
-    "KeyLevelEnginePort",
-    "MarketDataPort",
-    "ObservationRepositoryPort",
-    "RiskEnginePort",
-    "SetupClassifierPort",
-]
 
 
 @runtime_checkable
@@ -169,3 +228,13 @@ class ObservationRepositoryPort(Protocol):
     def latest(self, identity: "ObservationIdentity") -> "ObservationResult | None": ...
 
     def append(self, revision: "ObservationRevision") -> "ObservationResult": ...
+
+
+__all__ = [
+    "AccountStatePort", "AuditPort", "ConfirmationEnginePort", "DecisionEnginePort",
+    "ExecutionHistoryPort", "ExecutionPort", "ExitExecutionPort", "GovernanceEnginePort",
+    "GoverningKeyLevelPort", "H1MarketStructurePort", "InstrumentSpecificationPort",
+    "KeyLevelEnginePort", "MarketDataPort", "MarketExecutionContextPort",
+    "NoisePolicyPort", "ObservationQualificationContextPort", "ObservationRepositoryPort",
+    "RiskEnginePort", "SetupClassifierPort", "SessionPolicyPort", "TradeJournalPort", "VolatilityPolicyPort",
+]

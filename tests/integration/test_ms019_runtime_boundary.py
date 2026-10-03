@@ -23,6 +23,8 @@ from trading_system.domain import (
     Regime,
     RiskRequest,
     SwingKind,
+    QualificationContextResult,
+    QualificationContextStatus,
     SwingPoint,
     Timeframe,
 )
@@ -172,25 +174,36 @@ class Classifier:
 
 
 class Qualification:
-    def risk_request(self, *, candidate, key_levels, boundary):
-        return RiskRequest(
-            candidate=candidate,
-            active_key_levels=tuple(key_levels),
-            setup_key_level_id="KL-INTEGRATION",
-            account_equity=Decimal("10000"),
-            spread=Decimal("0"),
-            slippage=Decimal("0"),
-            noise=Decimal("0"),
-            volatility_adjustment=Decimal("0"),
-            value_per_price_unit=Decimal("100000"),
-        )
-
-    def governance_request(self, *, candidate, boundary):
-        return GovernanceRequest(
-            candidate=candidate,
-            instrument_session_eligible=True,
-            daily_trade_count=0,
-            daily_loss_count=0,
+    def qualify(
+        self,
+        *,
+        candidate,
+        key_levels,
+        structure,
+        boundary,
+        qualification_timestamp,
+    ):
+        return QualificationContextResult(
+            status=QualificationContextStatus.AVAILABLE,
+            qualification_timestamp=qualification_timestamp,
+            risk_request=RiskRequest(
+                candidate=candidate,
+                active_key_levels=tuple(key_levels),
+                setup_key_level_id="KL-INTEGRATION",
+                account_equity=Decimal("10000"),
+                spread=Decimal("0"),
+                slippage=Decimal("0"),
+                noise=Decimal("0"),
+                volatility_adjustment=Decimal("0"),
+                value_per_price_unit=Decimal("100000"),
+            ),
+            governance_request=GovernanceRequest(
+                candidate=candidate,
+                instrument_session_eligible=True,
+                daily_trade_count=0,
+                daily_loss_count=0,
+            ),
+            reason_codes=(),
         )
 
 

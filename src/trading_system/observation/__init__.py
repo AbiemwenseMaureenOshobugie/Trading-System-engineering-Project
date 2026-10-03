@@ -15,7 +15,6 @@ from .runner import (
     ObservationHistoryResolverPort,
     ObservationKeyLevelSelectorPort,
     ObservationMarketDataPort,
-    ObservationQualificationContextPort,
     ObservationRunner,
 )
 
@@ -33,7 +32,6 @@ __all__ = [
     "ObservationKeyLevelSelectorPort",
     "ObservationLifecycleCoordinator",
     "ObservationMarketDataPort",
-    "ObservationQualificationContextPort",
     "ObservationRevisionConflict",
     "ObservationRunner",
 ]
