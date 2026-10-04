@@ -36,6 +36,17 @@ from trading_system.domain.qualification import QualificationContextResult
 
 
 @runtime_checkable
+class CredentialResolverPort(Protocol):
+    """Resolve a canonical credential reference into secret material.
+
+    Implementations are infrastructure concerns. The resolved value must not
+    enter domain state, strategy state, audit records, or persistent storage.
+    """
+
+    def resolve(self, reference: str) -> str: ...
+
+
+@runtime_checkable
 class MarketDataPort(Protocol):
     """Read canonical, validated market candles from an external market-data source."""
 
@@ -231,7 +242,7 @@ class ObservationRepositoryPort(Protocol):
 
 
 __all__ = [
-    "AccountStatePort", "AuditPort", "ConfirmationEnginePort", "DecisionEnginePort",
+    "AccountStatePort", "AuditPort", "ConfirmationEnginePort", "CredentialResolverPort", "DecisionEnginePort",
     "ExecutionHistoryPort", "ExecutionPort", "ExitExecutionPort", "GovernanceEnginePort",
     "GoverningKeyLevelPort", "H1MarketStructurePort", "InstrumentSpecificationPort",
     "KeyLevelEnginePort", "MarketDataPort", "MarketExecutionContextPort",

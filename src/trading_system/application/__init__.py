@@ -3,6 +3,7 @@
 from .ports import (
     AuditPort,
     ConfirmationEnginePort,
+    CredentialResolverPort,
     DecisionEnginePort,
     ExecutionPort,
     ExitExecutionPort,
@@ -21,6 +22,7 @@ from .ports import (
 __all__ = [
     "AuditPort",
     "ConfirmationEnginePort",
+    "CredentialResolverPort",
     "DecisionEnginePort",
     "ExecutionPort",
     "ExitExecutionPort",
