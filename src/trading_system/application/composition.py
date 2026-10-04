@@ -17,6 +17,7 @@ from trading_system.application.ports import (
     ObservationQualificationContextPort,
 )
 from trading_system.decision import DecisionEngine
+from trading_system.domain import ObservationDataWindow
 from trading_system.execution import ExecutionEngine
 from trading_system.governance import GovernanceEngine
 from trading_system.observation import (
@@ -51,7 +52,7 @@ class CompositionDependencies:
     """
 
     credential_resolver: CredentialResolverPort
-    history_window_resolver: Callable[[str, datetime], object]
+    history_window_resolver: Callable[[str, datetime], ObservationDataWindow]
     qualification_context: ObservationQualificationContextPort
 
 
@@ -150,6 +151,7 @@ def compose_runtime(
             ("runtime_boundary", "MS-0.19"),
             ("application_composition", "MS-0.20"),
             ("external_credentials", "MS-0.24"),
+            ("history_window_policy", "MS-0.25"),
         ),
         clock=now,
     )
