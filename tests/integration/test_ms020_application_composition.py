@@ -23,6 +23,7 @@ from trading_system.domain import (
 from trading_system.domain.qualification import QualificationContextResult
 from trading_system.domain.enums import QualificationContextStatus
 from trading_system.runtime import (
+    EnvironmentCredentialResolver,
     DataProviderConfig,
     InstrumentConfig,
     OperationalTimeConfig,
@@ -93,7 +94,7 @@ def config(tmp_path):
 
 def dependencies():
     return CompositionDependencies(
-        credential_resolver=lambda reference: "test-key",
+        credential_resolver=EnvironmentCredentialResolver({"TEST_TWELVE_DATA_KEY": "test-key"}),
         history_window_resolver=lambda instrument, boundary: ObservationDataWindow(
             h1_start=boundary.replace(hour=boundary.hour - 4),
             h1_end=boundary,

@@ -41,7 +41,7 @@ def config(tmp_path):
         data_provider=DataProviderConfig(
             provider="twelve_data",
             credential_ref="env:TWELVE_DATA_API_KEY",
-            symbol_mappings=(("EURUSD", "EUR/USD"),),
+            symbol_mappings=(("EURUSD", "EUR/USD"), ("GBPUSD", "GBP/USD")),
         ),
         persistence=PersistenceConfig(
             repository_ref="sqlite-observation",
