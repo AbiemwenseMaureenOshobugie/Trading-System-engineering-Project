@@ -70,7 +70,7 @@ def test_composition_accepts_named_credential_resolver(tmp_path):
 
 
 def test_composition_rejects_unresolved_credential(tmp_path):
-    with pytest.raises(CompositionGapError, match="unresolved credential reference"):
+    with pytest.raises(CompositionGapError, match="credential resolution failed: unresolved credential reference"):
         compose_runtime(
             config(tmp_path),
             dependencies=dependencies(EnvironmentCredentialResolver({})),

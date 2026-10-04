@@ -84,7 +84,10 @@ def compose_runtime(
         raise CompositionGapError(gaps)
 
     now = clock or (lambda: datetime.now(timezone.utc))
-    api_key = dependencies.credential_resolver.resolve(config.data_provider.credential_ref)
+    try:
+        api_key = dependencies.credential_resolver.resolve(config.data_provider.credential_ref)
+    except Exception as exc:
+        raise CompositionGapError((f"credential resolution failed: {exc}",)) from exc
     if not api_key.strip():
         raise CompositionGapError(("market-data credential resolved to an empty value",))
 
