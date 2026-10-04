@@ -1,3 +1,4 @@
+from .credentials import CredentialResolutionError, EnvironmentCredentialResolver, UnsupportedCredentialReference
 """MS-0.17 operational runtime control."""
 
 from .audit import RuntimeAuditPort, RuntimeAuditRecord
@@ -15,6 +16,9 @@ from .scheduler import RuntimeScheduler
 from .status import RuntimeStatus
 
 __all__ = [
+    "CredentialResolutionError",
+    "EnvironmentCredentialResolver",
+    "UnsupportedCredentialReference",
     "DataProviderConfig",
     "FileRuntimeOwnership",
     "InstrumentConfig",

@@ -13,6 +13,7 @@ from trading_system.adapters.twelve_data.adapter import TwelveDataMarketDataAdap
 from trading_system.adapters.twelve_data.config import TwelveDataAdapterConfig
 from trading_system.application.ports import (
     AuditPort,
+    CredentialResolverPort,
     ObservationQualificationContextPort,
 )
 from trading_system.decision import DecisionEngine
@@ -49,7 +50,7 @@ class CompositionDependencies:
     This is a typed capability bundle, not a dependency-injection framework.
     """
 
-    credential_resolver: Callable[[str], str]
+    credential_resolver: CredentialResolverPort
     history_window_resolver: Callable[[str, datetime], object]
     qualification_context: ObservationQualificationContextPort
 
@@ -83,7 +84,10 @@ def compose_runtime(
         raise CompositionGapError(gaps)
 
     now = clock or (lambda: datetime.now(timezone.utc))
-    api_key = dependencies.credential_resolver(config.data_provider.credential_ref)
+    try:
+        api_key = dependencies.credential_resolver.resolve(config.data_provider.credential_ref)
+    except Exception as exc:
+        raise CompositionGapError((f"credential resolution failed: {exc}",)) from exc
     if not api_key.strip():
         raise CompositionGapError(("market-data credential resolved to an empty value",))
 
@@ -145,6 +149,7 @@ def compose_runtime(
             ("runtime_scheduler", "MS-0.18"),
             ("runtime_boundary", "MS-0.19"),
             ("application_composition", "MS-0.20"),
+            ("external_credentials", "MS-0.24"),
         ),
         clock=now,
     )

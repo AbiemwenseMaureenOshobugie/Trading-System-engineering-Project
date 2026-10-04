@@ -14,6 +14,7 @@ from trading_system.application.composition import (
     compose_runtime,
 )
 from trading_system.runtime import (
+    EnvironmentCredentialResolver,
     DataProviderConfig,
     InstrumentConfig,
     OperationalTimeConfig,
@@ -54,14 +55,6 @@ def _runtime_config_from_environment() -> RuntimeConfig:
     )
 
 
-def _credential_resolver(reference: str) -> str:
-    if reference.startswith("env:"):
-        name = reference.removeprefix("env:")
-        value = os.environ.get(name)
-        if value:
-            return value
-    raise CompositionGapError((f"unresolved credential reference: {reference}",))
-
 
 def main() -> int:
     try:
@@ -69,7 +62,7 @@ def main() -> int:
         # No fake business implementations are installed here. The single
         # composition root reports any unresolved capabilities explicitly.
         dependencies = CompositionDependencies(
-            credential_resolver=_credential_resolver,
+            credential_resolver=EnvironmentCredentialResolver(os.environ),
             history_window_resolver=None,
             key_level_selector=None,
             setup_classifier=None,
