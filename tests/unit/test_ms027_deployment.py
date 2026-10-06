@@ -8,6 +8,7 @@ from trading_system.domain import DecisionStatus, ExecutionState, GovernanceStat
 from trading_system.runtime import (
     AuthoritativeRecord,
     DependencyHealth,
+    DeploymentError,
     DependencyStatus,
     DeploymentIdentity,
     DeploymentMode,
