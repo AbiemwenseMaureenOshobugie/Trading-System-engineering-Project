@@ -256,9 +256,10 @@ class RuntimeDeploymentController:
             raise DeploymentError(f"cannot refresh from {self._state.value}")
 
         readiness = self.readiness()
-        if readiness.ready:
-            self._transition(RuntimeLifecycleState.RUNNING)
-        elif self._state is RuntimeLifecycleState.RUNNING:
+        if self._state is RuntimeLifecycleState.RECOVERING:
+            if readiness.ready:
+                self._transition(RuntimeLifecycleState.RUNNING)
+        elif self._state is RuntimeLifecycleState.RUNNING and not readiness.ready:
             self._transition(RuntimeLifecycleState.DEGRADED)
         return self._state
 
