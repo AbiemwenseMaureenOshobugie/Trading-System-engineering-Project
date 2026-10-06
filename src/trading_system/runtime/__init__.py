@@ -1,6 +1,30 @@
-from .credentials import CredentialResolutionError, EnvironmentCredentialResolver, UnsupportedCredentialReference
-"""MS-0.17 operational runtime control."""
+"""Operational runtime boundaries for ASTER."""
 
+from .deployment import (
+    AuthoritativeRecord,
+    DeploymentError,
+    DeploymentIdentity,
+    DeploymentMode,
+    DependencyHealth,
+    DependencyHealthPort,
+    DependencyStatus,
+    DuplicateExecution,
+    ExecutionAuthorization,
+    ExecutionAuthorizationExpired,
+    OperationalCapability,
+    OperationalStatePort,
+    RecoveryOutcome,
+    RuntimeDeploymentController,
+    RuntimeLifecycleState,
+    RuntimeNotReady,
+    RuntimeReadiness,
+)
+
+from .credentials import (
+    CredentialResolutionError,
+    EnvironmentCredentialResolver,
+    UnsupportedCredentialReference,
+)
 from .audit import RuntimeAuditPort, RuntimeAuditRecord
 from .config import (
     DataProviderConfig,
@@ -16,23 +40,40 @@ from .scheduler import RuntimeScheduler
 from .status import RuntimeStatus
 
 __all__ = [
+    "AuthoritativeRecord",
     "CredentialResolutionError",
-    "EnvironmentCredentialResolver",
-    "UnsupportedCredentialReference",
     "DataProviderConfig",
+    "DeploymentError",
+    "DeploymentIdentity",
+    "DeploymentMode",
+    "DependencyHealth",
+    "DependencyHealthPort",
+    "DependencyStatus",
+    "DuplicateExecution",
+    "EnvironmentCredentialResolver",
+    "ExecutionAuthorization",
+    "ExecutionAuthorizationExpired",
     "FileRuntimeOwnership",
     "InstrumentConfig",
+    "OperationalCapability",
+    "OperationalStatePort",
     "OperationalTimeConfig",
     "PersistenceConfig",
-    "RuntimeAuditPort",
-    "RuntimeAuditRecord",
+    "RecoveryOutcome",
     "RuntimeConfig",
     "RuntimeControl",
     "RuntimeControlError",
+    "RuntimeDeploymentController",
     "RuntimeFailure",
     "RuntimeFailureComponent",
+    "RuntimeLifecycleState",
+    "RuntimeNotReady",
     "RuntimeOwnership",
     "RuntimeOwnershipError",
+    "RuntimeReadiness",
     "RuntimeScheduler",
     "RuntimeStatus",
+    "RuntimeAuditPort",
+    "RuntimeAuditRecord",
+    "UnsupportedCredentialReference",
 ]
