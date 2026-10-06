@@ -84,3 +84,19 @@ class ExitExecutionState(StrEnum):
     SUBMITTED = "SUBMITTED"
     FILLED = "FILLED"
     FAILED = "FAILED"
+
+
+
+class AIObservationStatus(StrEnum):
+    COMPLETED = "COMPLETED"
+    UNAVAILABLE = "UNAVAILABLE"
+    TIMEOUT = "TIMEOUT"
+    FAILED = "FAILED"
+    INVALID_OUTPUT = "INVALID_OUTPUT"
+
+
+class AIObservationConsumer(StrEnum):
+    EXPLANATION = "EXPLANATION"
+    RESEARCH = "RESEARCH"
+    JOURNAL = "JOURNAL"
+    ANALYTICS = "ANALYTICS"

@@ -11,6 +11,8 @@ from decimal import Decimal
 from typing import Optional
 
 from .enums import (
+    AIObservationConsumer,
+    AIObservationStatus,
     ConfirmationType,
     DecisionStatus,
     Direction,
@@ -385,3 +387,45 @@ class ExitExecutionRecord:
     actual_executed_quantity: Optional[Decimal] = None
     exit_execution_timestamp: Optional[datetime] = None
     broker_retcode: Optional[int] = None
+
+
+@dataclass(frozen=True, slots=True)
+class AIObservation:
+    """Immutable, non-authoritative record of one AI/ML invocation."""
+
+    observation_id: str
+    status: AIObservationStatus
+    model_id: str
+    model_version: str
+    requested_at: datetime
+    completed_at: Optional[datetime]
+    consumer: AIObservationConsumer
+    input_references: tuple[str, ...]
+    aster_state_references: tuple[str, ...]
+    context_fingerprint: str
+    observations: tuple[str, ...]
+    confidence: Optional[Decimal]
+    explanation: Optional[str]
+    limitations: tuple[str, ...]
+    failure_category: Optional[str]
+    schema_version: str
+
+    def __post_init__(self) -> None:
+        if self.requested_at.tzinfo is None:
+            raise ValueError("requested_at must be timezone-aware")
+        if self.completed_at is not None and self.completed_at.tzinfo is None:
+            raise ValueError("completed_at must be timezone-aware")
+        if not self.observation_id:
+            raise ValueError("observation_id must not be empty")
+        if not self.model_id:
+            raise ValueError("model_id must not be empty")
+        if not self.model_version:
+            raise ValueError("model_version must not be empty")
+        if not self.context_fingerprint:
+            raise ValueError("context_fingerprint must not be empty")
+        if not self.schema_version:
+            raise ValueError("schema_version must not be empty")
+        if self.status is AIObservationStatus.COMPLETED and self.failure_category is not None:
+            raise ValueError("completed observations must not have a failure_category")
+        if self.status is not AIObservationStatus.COMPLETED and self.completed_at is not None:
+            raise ValueError("non-completed observations must not have completed_at")

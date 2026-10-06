@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from trading_system.domain import ObservationIdentity, ObservationResult, ObservationRevision
 
 from trading_system.domain import (
+    AIObservation,
     TradeJournalEntry,
     AuditRecord,
     ConfirmationSequence,
@@ -233,6 +234,15 @@ class AuditPort(Protocol):
 
 
 @runtime_checkable
+class AIObservationRepositoryPort(Protocol):
+    """Durable append-only persistence boundary for AI observations."""
+
+    def append(self, observation: "AIObservation") -> None: ...
+
+    def get(self, observation_id: str) -> "AIObservation | None": ...
+
+
+@runtime_checkable
 class ObservationRepositoryPort(Protocol):
     """Durable canonical persistence boundary for observation revisions."""
 
@@ -246,6 +256,7 @@ __all__ = [
     "ExecutionHistoryPort", "ExecutionPort", "ExitExecutionPort", "GovernanceEnginePort",
     "GoverningKeyLevelPort", "H1MarketStructurePort", "InstrumentSpecificationPort",
     "KeyLevelEnginePort", "MarketDataPort", "MarketExecutionContextPort",
-    "NoisePolicyPort", "ObservationQualificationContextPort", "ObservationRepositoryPort",
+    "NoisePolicyPort", "ObservationQualificationContextPort", "AIObservationRepositoryPort",
+    "ObservationRepositoryPort",
     "RiskEnginePort", "SetupClassifierPort", "SessionPolicyPort", "TradeJournalPort", "VolatilityPolicyPort",
 ]
