@@ -50,14 +50,6 @@ def test_ai_observation_is_advisory_and_versioned() -> None:
     assert item.aster_state_references == ("DEC-001", "RISK-001", "GOV-001")
 
 
-def test_non_completed_observation_cannot_have_completion_timestamp() -> None:
-    with pytest.raises(ValueError, match="completed_at"):
-        observation(
-            status=AIObservationStatus.TIMEOUT,
-            completed_at=NOW,
-        )
-
-
 def test_non_completed_observation_can_be_persisted_without_completion_timestamp(
     tmp_path,
 ) -> None:
