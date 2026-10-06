@@ -425,7 +425,3 @@ class AIObservation:
             raise ValueError("context_fingerprint must not be empty")
         if not self.schema_version:
             raise ValueError("schema_version must not be empty")
-        if self.status is AIObservationStatus.COMPLETED and self.failure_category is not None:
-            raise ValueError("completed observations must not have a failure_category")
-        if self.status is not AIObservationStatus.COMPLETED and self.completed_at is not None:
-            raise ValueError("non-completed observations must not have completed_at")
