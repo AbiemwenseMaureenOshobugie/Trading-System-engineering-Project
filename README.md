@@ -6,37 +6,59 @@ A serious, auditable Forex trading decision-support and eventual controlled-exec
 
 ## Current development status
 
-**Current milestone:** **MS-0.13 — Live Market Data Adapter**
+**Current milestone:** **MS-0.27 — Production Deployment Contract**
 
-**Status:** **Contract frozen — implementation next**
+**Status:** **Specification accepted and canonical; implementation validated on PR #33**
 
-**Current main HEAD before this documentation commit:** 994a20ea
+The canonical MS-0.27 specification was merged into main at:
 
-**Completed milestones:** MS-0.1A through MS-0.12
+108597bc9fb3a3e490ddd145e7ac1c0824f92ce0
 
-### MS-0.13 — Live Market Data Adapter
+MS-0.27 defines the platform-neutral production/deployment boundary across:
 
-MS-0.13 freezes the first external live market-data boundary.
+- Decision-support
+- Paper trading
+- MT5 demo
+- Controlled live
 
-The locked contract uses **Twelve Data** as the first provider and keeps provider-specific identifiers behind the adapter boundary.
+The implementation adds:
 
-The adapter:
-- publishes only completed canonical MarketCandle records;
-- owns the mapping from ASTER symbols EURUSD / GBPUSD to provider symbols;
-- fails closed on invalid, unavailable, stale, incomplete, duplicated, or otherwise unreliable market data;
-- uses boundary-driven REST polling;
-- preserves source identity and auditable retrieval/provenance metadata;
-- accepts an explicit operational warm-up window without inventing a strategy lookback.
+- canonical runtime lifecycle: STARTING → INITIALIZING → RUNNING ↔ DEGRADED/RECOVERING → SHUTTING_DOWN → STOPPED;
+- explicit dependency health and readiness;
+- fail-closed strategy-decision and execution capability gates;
+- runtime-scoped execution authorization;
+- deterministic recovery semantics for AUTHORIZED, SUBMITTED, FILLED, and FAILED execution state;
+- duplicate-execution prevention;
+- immutable append-only authoritative-state boundary;
+- application, strategy, configuration, and runtime identity;
+- platform-neutral persistence and deployment ports.
 
-WebSocket streaming, TradingView integration, MT5 market-data integration, live orders, AI/ML interpretation, strategy changes, new Risk/Governance/Session rules, and portfolio logic are outside MS-0.13.
+**Runtime validation:** 284 tests passed in CI on PR #33.
 
-The canonical contract is docs/strategy/ms-0.13-live-market-data-adapter.md.
+### MS-0.27 explicit non-decisions
+
+MS-0.27 does **not** mandate:
+
+- Docker
+- Kubernetes
+- a cloud provider
+- a cloud secret-management product
+- a specific persistence technology
+- a specific backup technology
+- a monitoring vendor or monitoring stack
+- a distributed coordination system
+- a broker/MT5 implementation
+- a specific deployment platform
+
+These remain implementation or later infrastructure decisions.
 
 ## Current control flow
 
 Live Market Data → Validation + Normalization → Strategy qualification → Risk + Governance → Decision → Execution → Position / Exit → Journal → Performance Analytics
 
 Session Policy is a temporal eligibility provider to Governance rather than a downstream execution stage.
+
+Deployment and runtime control sit around this application flow. Deployment capability does not equal execution authorization.
 
 ## Engineering principles
 
@@ -50,10 +72,12 @@ Session Policy is a temporal eligibility provider to Governance rather than a do
 8. Every material decision must be explainable and auditable.
 9. Backtesting must prevent look-ahead bias, leakage, and accidental use of future information.
 10. Project changes are committed in coherent batches rather than unnecessary micro-commits.
+11. Production deployment remains platform-neutral until an infrastructure decision is explicitly frozen.
 
 ## Documentation
 
 Key milestone specifications include:
+
 - docs/strategy/ms-0.1a-market-structure-spec.md
 - docs/strategy/ms-0.2-key-level-spec.md
 - docs/strategy/ms-0.3-confirmation-spec.md
@@ -67,9 +91,10 @@ Key milestone specifications include:
 - docs/strategy/ms-0.11-backtest-historical-replay-contract.md
 - docs/strategy/ms-0.12-mt5-demo-adapter.md
 - docs/strategy/ms-0.13-live-market-data-adapter.md
+- docs/strategy/ms-0.27-production-deployment.md
 
 ## Development discipline
 
-The smallest working system is preferred over premature complexity. New modules, indicators, AI models, data sources, execution mechanisms, and risk rules require explicit methodological or engineering justification.
+The smallest working system is preferred over premature complexity. New modules, indicators, AI models, data sources, execution mechanisms, infrastructure technologies, and risk rules require explicit methodological or engineering justification.
 
-MS-0.13 is contractually frozen before implementation. Further changes will proceed through explicit, versioned decisions and controlled implementation batches.
+Contracts are frozen before implementation. Further changes proceed through explicit, versioned decisions and controlled implementation batches.
