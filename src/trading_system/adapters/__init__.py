@@ -55,3 +55,7 @@ from .observation_sqlite import (
     ObservationSerializationError,
     SQLiteObservationRepository,
 )
+
+from .ai_observation_sqlite import AIObservationPersistenceError, SQLiteAIObservationRepository
+
+__all__ += ["AIObservationPersistenceError", "SQLiteAIObservationRepository"]

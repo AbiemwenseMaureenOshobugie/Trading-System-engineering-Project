@@ -1,6 +1,7 @@
 """Application-layer ports for the trading system."""
 
 from .ports import (
+    AIObservationRepositoryPort,
     AuditPort,
     ConfirmationEnginePort,
     CredentialResolverPort,
@@ -20,6 +21,7 @@ from .ports import (
 )
 
 __all__ = [
+    "AIObservationRepositoryPort",
     "AuditPort",
     "ConfirmationEnginePort",
     "CredentialResolverPort",
