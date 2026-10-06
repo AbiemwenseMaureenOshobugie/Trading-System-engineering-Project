@@ -136,3 +136,16 @@ def test_klt15_ms01a_structure_is_consumed_without_regime_change():
 def test_klt16_cp2_is_not_implemented_by_key_level_engine():
     levels = KeyLevelDetectionEngine().detect(candles=(), structure=state(upper=PriceZone(Decimal("1.1200"), Decimal("1.1250"))))
     assert not any("CP-2" in event for level in levels for event in level.state_history)
+
+
+
+def test_klt17_independent_prior_high_low_is_not_a_key_level_source():
+    upper = PriceZone(Decimal("1.1200"), Decimal("1.1250"))
+    structure = state(
+        upper=upper,
+        events=("PRIOR_HIGH:1.1300", "PRIOR_LOW:1.0700"),
+    )
+    levels = KeyLevelDetectionEngine().detect(candles=(), structure=structure)
+    assert len(levels) == 1
+    assert levels[0].source_types == (KeyLevelSource.RANGE_BOUNDARY,)
+    assert all("PRIOR_" not in ref for ref in levels[0].evidence_refs)

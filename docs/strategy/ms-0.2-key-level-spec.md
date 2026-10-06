@@ -27,6 +27,20 @@ A **Key Level is a canonical structural identity backed by one or more approved 
 
 A Key Level therefore represents an evidence-backed structural identity, not merely a single price and not an independently invented support/resistance line.
 
+## 3A. Prior High/Low boundary
+
+An independent Prior High/Low is **not an approved Key-Level source** in ASTER.
+
+The term may only resolve through the existing validated/meaningful swing chain:
+
+- a prior high/low used by canonical strategy or Key-Level logic must be derived from a validated/meaningful swing;
+- a confirmed-but-not-meaningful swing cannot serve as that reference;
+- no independent `PRIOR_HIGH` or `PRIOR_LOW` source type exists in `KeyLevelSource`;
+- no separate identification algorithm, lookback, tolerance, or geometry is introduced;
+- CP-1, CP-2, Risk, target selection, and downstream execution must not introduce an independent prior-high/prior-low source.
+
+This closes the Prior High/Low ambiguity without expanding the MS-0.2 source model.
+
 ## 4. Approved Key-Level sources
 
 ### 4.1 Validated Swing
@@ -145,6 +159,9 @@ MS-0.2 must therefore not introduce:
 14. Key-Level activity follows the structural validity of its underlying source evidence.
 15. Historical Key-Level evidence remains auditable after deactivation.
 16. Identical approved inputs produce identical Key-Level output and provenance.
+17. Independent Prior High/Low is not an approved source; any canonical prior high/low must resolve through validated/meaningful swing evidence.
+18. Confirmed-but-not-meaningful swings cannot satisfy the Prior High/Low reference.
+19. No downstream component may introduce an independent Prior High/Low source.
 
 ## 11. Domain output contract
 

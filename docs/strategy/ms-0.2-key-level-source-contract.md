@@ -11,6 +11,10 @@ This document defines the deterministic source-to-Key-Level mapping used by MS-0
 | `BREAKOUT_LEVEL` | Approved breakout event tied to an existing structural level | Inherit the associated structural level's zone | Breakout-state evidence |
 | `ROLE_REVERSAL` | Established role transition of an existing level | Inherit the existing Key-Level source zone | State/provenance evidence |
 
+## 1A. Prior High/Low exclusion
+
+Independent Prior High/Low is not a source in this contract. Any prior high/low required by canonical strategy logic must resolve through a `VALIDATED_SWING` that is already meaningful under MS-0.1A. A confirmed-but-not-meaningful swing is not eligible. No separate source type, lookback, tolerance, or identification algorithm is permitted.
+
 ## 2. Validated Swing mapping
 
 For a meaningful swing:
