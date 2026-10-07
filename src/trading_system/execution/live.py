@@ -12,6 +12,7 @@ from trading_system.domain import (
     GovernanceStatus, LiveAuthorizationStatus, LiveExecutionAuthorization,
     LiveExecutionRecord, RiskResult, RiskStatus,
 )
+from trading_system.runtime.audit import RuntimeAuditRecord
 from trading_system.runtime.deployment import (
     DeploymentMode, ExecutionAuthorization, OperationalCapability,
 )
@@ -64,8 +65,21 @@ class LiveAuthorizationController:
             status=LiveAuthorizationStatus.ACTIVE,
         )
         self._authorization_port.issue(authorization)
-        self._audit.record(("LIVE_AUTHORIZATION_ISSUED", authorization.authorization_id))
+        self._emit_audit(now, "LIVE_AUTHORIZATION_ISSUED", authorization.authorization_id, "AUTHORIZED")
         return authorization
+
+    def _emit_audit(self, timestamp: datetime, event_type: str, reference: str, outcome: str) -> None:
+        self._audit.record(
+            RuntimeAuditRecord(
+                audit_id=f"RA-MS028-{reference}-{event_type}",
+                timestamp=timestamp,
+                runtime_id=reference,
+                event_type=event_type,
+                component="LIVE_EXECUTION",
+                reference=reference,
+                outcome=outcome,
+            )
+        )
 
     @staticmethod
     def _utc(value: datetime) -> datetime:
@@ -101,11 +115,11 @@ class LiveExecutionEngine:
         except Exception as exc:
             record = self._unknown_record(candidate, live_authorization, runtime_id,
                                           runtime_context_id, risk.position_size or Decimal("0"), now, str(exc))
-            self._audit.record(("LIVE_EXECUTION_UNKNOWN", record.execution_id))
-            raise BrokerOutcomeUnknown(record.execution_id) from exc
+            self._emit_audit(now, "LIVE_EXECUTION_UNKNOWN", record.execution_id, "SUBMITTED")
+            return record
         record = self._from_snapshot(candidate, live_authorization, runtime_id,
                                      runtime_context_id, snapshot, now)
-        self._audit.record(("LIVE_EXECUTION_SUBMISSION_OUTCOME", record.execution_id, record.state.value))
+        self._emit_audit(now, "LIVE_EXECUTION_SUBMISSION_OUTCOME", record.execution_id, record.state.value)
         return record
 
     def reconcile(self, record: LiveExecutionRecord) -> LiveExecutionRecord:
@@ -116,7 +130,7 @@ class LiveExecutionEngine:
         updated = self._from_snapshot(None, None, record.runtime_id,
                                       record.runtime_context_id, snapshot,
                                       self._utc(self._clock()), existing=record)
-        self._audit.record(("LIVE_EXECUTION_RECONCILED", record.execution_id, updated.state.value))
+        self._emit_audit(updated.execution_timestamp, "LIVE_EXECUTION_RECONCILED", record.execution_id, updated.state.value)
         return updated
 
     def _validate(self, candidate, decision, risk, governance, runtime_auth,
