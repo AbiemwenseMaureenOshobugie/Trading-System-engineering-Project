@@ -31,6 +31,7 @@ from trading_system.domain import (
     MarketStructureState,
     RiskRequest,
     RiskResult,
+    LiveExecutionAuthorization, LiveExecutionRecord, BrokerOrderSnapshot,
     Timeframe,
 )
 from trading_system.domain.qualification import QualificationContextResult
@@ -260,3 +261,24 @@ __all__ = [
     "ObservationRepositoryPort",
     "RiskEnginePort", "SetupClassifierPort", "SessionPolicyPort", "TradeJournalPort", "VolatilityPolicyPort",
 ]
+
+
+
+@runtime_checkable
+class LiveAuthorizationPort(Protocol):
+    """Issue, retrieve, and atomically consume live execution authority."""
+    def issue(self, authorization: LiveExecutionAuthorization) -> LiveExecutionAuthorization: ...
+    def get(self, authorization_id: str) -> LiveExecutionAuthorization | None: ...
+    def consume(self, authorization_id: str, *, now: datetime) -> LiveExecutionAuthorization: ...
+
+
+@runtime_checkable
+class LiveBrokerSubmissionPort(Protocol):
+    """Submit one already-authorized live order to the external broker."""
+    def submit(self, *, candidate: DecisionCandidate, quantity: Decimal) -> BrokerOrderSnapshot: ...
+
+
+@runtime_checkable
+class LiveBrokerReadPort(Protocol):
+    """Read broker state during reconciliation; never submits or modifies orders."""
+    def get_order(self, broker_order_id: str) -> BrokerOrderSnapshot: ...

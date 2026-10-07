@@ -22,6 +22,9 @@ from .enums import (
     GovernanceStatus,
     GoverningKeyLevelStatus,
     KeyLevelSource,
+    LiveAuthorizationStatus,
+    BrokerOrderOutcome,
+    FillClassification,
     Regime,
     RiskStatus,
     SwingKind,
@@ -425,3 +428,80 @@ class AIObservation:
             raise ValueError("context_fingerprint must not be empty")
         if not self.schema_version:
             raise ValueError("schema_version must not be empty")
+
+@dataclass(frozen=True, slots=True)
+class LiveExecutionAuthorization:
+    """Explicit, scoped authority for one real-money broker submission."""
+    authorization_id: str
+    decision_id: str
+    instrument: str
+    authorized_execution_mode: str
+    runtime_id: str
+    runtime_context_id: str
+    authorized_by: str
+    authorized_at: datetime
+    expires_at: datetime
+    status: LiveAuthorizationStatus
+
+    def __post_init__(self) -> None:
+        if not self.authorization_id.strip(): raise ValueError("authorization_id must not be blank")
+        if not self.decision_id.strip(): raise ValueError("decision_id must not be blank")
+        if not self.instrument.strip(): raise ValueError("instrument must not be blank")
+        if not self.authorized_by.strip(): raise ValueError("authorized_by must not be blank")
+        if self.authorized_at.tzinfo is None or self.expires_at.tzinfo is None:
+            raise ValueError("authorization timestamps must be timezone-aware")
+        if self.expires_at <= self.authorized_at:
+            raise ValueError("expires_at must be later than authorized_at")
+
+    def is_valid_at(self, now: datetime) -> bool:
+        if now.tzinfo is None: raise ValueError("validation timestamp must be timezone-aware")
+        return self.status is LiveAuthorizationStatus.ACTIVE and self.authorized_at <= now < self.expires_at
+
+
+@dataclass(frozen=True, slots=True)
+class BrokerOrderSnapshot:
+    """Read-only broker evidence used during live reconciliation."""
+    broker_order_id: str
+    outcome: BrokerOrderOutcome
+    requested_quantity: Decimal
+    executed_quantity: Decimal
+    fill_price: Optional[Decimal]
+    broker_status: str
+    observed_at: datetime
+
+    def __post_init__(self) -> None:
+        if self.observed_at.tzinfo is None: raise ValueError("observed_at must be timezone-aware")
+        if self.requested_quantity <= 0: raise ValueError("requested_quantity must be positive")
+        if self.executed_quantity < 0 or self.executed_quantity > self.requested_quantity:
+            raise ValueError("executed_quantity must be within requested quantity")
+
+
+@dataclass(frozen=True, slots=True)
+class LiveExecutionRecord:
+    """Immutable real-money entry execution evidence and reconciliation state."""
+    execution_id: str
+    decision_id: str
+    state: ExecutionState
+    authorization_id: str
+    runtime_id: str
+    runtime_context_id: str
+    instrument: str
+    requested_quantity: Decimal
+    executed_quantity: Decimal
+    remaining_quantity: Decimal
+    broker_order_id: Optional[str]
+    broker_outcome: BrokerOrderOutcome
+    fill_classification: FillClassification
+    actual_fill_price: Optional[Decimal]
+    execution_timestamp: datetime
+    reconciliation_required: bool
+    manual_reconciliation_required: bool
+    failure_reason: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        if self.requested_quantity <= 0: raise ValueError("requested_quantity must be positive")
+        if self.executed_quantity < 0 or self.remaining_quantity < 0:
+            raise ValueError("execution quantities must not be negative")
+        if self.executed_quantity + self.remaining_quantity != self.requested_quantity:
+            raise ValueError("executed + remaining must equal requested quantity")
+        if self.execution_timestamp.tzinfo is None: raise ValueError("execution_timestamp must be timezone-aware")
