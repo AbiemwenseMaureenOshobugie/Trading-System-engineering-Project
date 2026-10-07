@@ -259,7 +259,7 @@ __all__ = [
     "KeyLevelEnginePort", "MarketDataPort", "MarketExecutionContextPort",
     "NoisePolicyPort", "ObservationQualificationContextPort", "AIObservationRepositoryPort",
     "ObservationRepositoryPort",
-    "RiskEnginePort", "SetupClassifierPort", "SessionPolicyPort", "TradeJournalPort", "VolatilityPolicyPort",
+    "LiveAuthorizationPort", "LiveBrokerReadPort", "LiveBrokerSubmissionPort", "RiskEnginePort", "SetupClassifierPort", "SessionPolicyPort", "TradeJournalPort", "VolatilityPolicyPort",
 ]
 
 
