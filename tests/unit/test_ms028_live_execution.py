@@ -12,8 +12,7 @@ from trading_system.domain import (
     GovernanceResult, GovernanceStatus, LiveAuthorizationStatus, RiskResult, RiskStatus,
 )
 from trading_system.execution.live import (
-    BrokerOutcomeUnknown, LiveAuthorizationController, LiveAuthorizationConsumed,
-    LiveExecutionEngine,
+    LiveAuthorizationController, LiveAuthorizationConsumed, LiveExecutionEngine,
 )
 from trading_system.runtime import (
     DeploymentIdentity, DeploymentMode, ExecutionAuthorization,
@@ -131,7 +130,7 @@ def test_partial_fill_stays_submitted_until_terminal_disposition():
     assert final.state is ExecutionState.FAILED
     assert final.fill_classification is FillClassification.PARTIAL
 
-def test_unknown_outcome_does_not_resubmit():
+def test_unknown_outcome_is_preserved_without_resubmission():
     _, store, a, audit = issue_auth()
     broker = Broker()
     def fail(**kwargs):
@@ -139,7 +138,10 @@ def test_unknown_outcome_does_not_resubmit():
         raise TimeoutError("timeout")
     broker.submit = fail
     engine = LiveExecutionEngine(authorization_port=store, broker_submission_port=broker, broker_read_port=broker, audit_port=audit, clock=lambda: NOW)
-    with pytest.raises(BrokerOutcomeUnknown):
-        engine.submit(candidate=candidate(), decision=decision(), risk=risk(), governance=governance(), runtime_authorization=runtime_auth(), live_authorization=a, runtime_id="runtime", runtime_context_id="runtime:1")
+    rec = engine.submit(candidate=candidate(), decision=decision(), risk=risk(), governance=governance(), runtime_authorization=runtime_auth(), live_authorization=a, runtime_id="runtime", runtime_context_id="runtime:1")
+    assert rec.state is ExecutionState.SUBMITTED
+    assert rec.broker_outcome is BrokerOrderOutcome.UNKNOWN
+    assert rec.reconciliation_required
+    assert rec.manual_reconciliation_required
     assert broker.calls == 1
     assert store.get(a.authorization_id).status is LiveAuthorizationStatus.CONSUMED
