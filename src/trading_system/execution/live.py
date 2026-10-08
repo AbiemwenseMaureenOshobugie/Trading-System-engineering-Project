@@ -101,6 +101,19 @@ class LiveExecutionEngine:
         self._audit = audit_port
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
+    def _emit_audit(self, timestamp: datetime, runtime_id: str, event_type: str, reference: str, outcome: str) -> None:
+        self._audit.record(
+            RuntimeAuditRecord(
+                audit_id=f"RA-MS028-{reference}-{event_type}",
+                timestamp=timestamp,
+                runtime_id=runtime_id,
+                event_type=event_type,
+                component="LIVE_EXECUTION",
+                reference=reference,
+                outcome=outcome,
+            )
+        )
+
     def submit(self, *, candidate: DecisionCandidate, decision: DecisionResult,
                risk: RiskResult, governance: GovernanceResult,
                runtime_authorization: ExecutionAuthorization,
