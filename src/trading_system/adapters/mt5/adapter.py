@@ -172,7 +172,7 @@ class MT5BrokerAdapter:
             return BrokerSubmissionResult(
                 TransmissionStatus.NOT_TRANSMITTED,
                 None,
-                self._evidence(request, BrokerOrderOutcome.REJECTED, "ORDER_CHECK_FAILED", str(getattr(check, "retcode", self._mt5.last_error())), (str(getattr(check, "comment", "order_check failed")),)),
+                None,
             )
         try:
             result = self._mt5.order_send(native_request)
