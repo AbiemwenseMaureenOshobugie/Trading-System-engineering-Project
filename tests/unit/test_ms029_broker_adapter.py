@@ -108,6 +108,9 @@ def test_missing_broker_position_is_not_a_close():
 
 
 def test_ambiguous_position_match_is_not_selected():
+    position = BrokerPositionSnapshot(
+        "BP-1", "EURUSD", Direction.BUY, Decimal("1000"), Decimal("1.1000"), NOW
+    )
     second = BrokerPositionSnapshot(
         "BP-2", "EURUSD", Direction.BUY, Decimal("500"), Decimal("1.1002"), NOW
     )
