@@ -85,7 +85,7 @@ def test_position_match_requires_authoritative_identity():
         "BP-1", "EURUSD", Direction.BUY, Decimal("1000"), Decimal("1.1000"), NOW, "BE-2"
     )
     result = BrokerPositionSynchronizer.synchronize(
-        known_broker_position_id="BP-1", snapshot=position
+        known_broker_position_id="BP-1", snapshots=(position,)
     )
     assert result.outcome is BrokerPositionSyncOutcome.MATCH
 
@@ -95,20 +95,23 @@ def test_unknown_broker_position_is_not_attributed():
         "BP-2", "EURUSD", Direction.BUY, Decimal("1000"), Decimal("1.1000"), NOW
     )
     result = BrokerPositionSynchronizer.synchronize(
-        known_broker_position_id=None, snapshot=position
+        known_broker_position_id=None, snapshots=(position,)
     )
     assert result.outcome is BrokerPositionSyncOutcome.UNKNOWN_BROKER_POSITION
 
 
 def test_missing_broker_position_is_not_a_close():
     result = BrokerPositionSynchronizer.synchronize(
-        known_broker_position_id="BP-1", snapshot=None
+        known_broker_position_id="BP-1", snapshots=()
     )
     assert result.outcome is BrokerPositionSyncOutcome.BROKER_POSITION_MISSING
 
 
 def test_ambiguous_position_match_is_not_selected():
+    second = BrokerPositionSnapshot(
+        "BP-2", "EURUSD", Direction.BUY, Decimal("500"), Decimal("1.1002"), NOW
+    )
     result = BrokerPositionSynchronizer.synchronize(
-        known_broker_position_id="BP-1", snapshot=None, ambiguous=True
+        known_broker_position_id=None, snapshots=(position, second)
     )
     assert result.outcome is BrokerPositionSyncOutcome.AMBIGUOUS_MATCH

@@ -52,34 +52,43 @@ class BrokerPositionSynchronizer:
     def synchronize(
         *,
         known_broker_position_id: str | None,
-        snapshot: BrokerPositionSnapshot | None,
-        ambiguous: bool = False,
+        snapshots: tuple[BrokerPositionSnapshot, ...],
     ) -> BrokerPositionSyncResult:
-        if ambiguous:
-            return BrokerPositionSyncResult(
-                BrokerPositionSyncOutcome.AMBIGUOUS_MATCH,
-                None,
-                "multiple broker positions cannot be attributed automatically",
-            )
-        if snapshot is None:
+        if not snapshots:
             return BrokerPositionSyncResult(
                 BrokerPositionSyncOutcome.BROKER_POSITION_MISSING,
                 None,
                 "no authoritative broker position was observed",
             )
-        if known_broker_position_id is None:
+        if known_broker_position_id is not None:
+            matches = tuple(
+                position for position in snapshots
+                if position.broker_position_id == known_broker_position_id
+            )
+            if len(matches) == 1:
+                return BrokerPositionSyncResult(BrokerPositionSyncOutcome.MATCH, matches[0])
+            if len(matches) > 1:
+                return BrokerPositionSyncResult(
+                    BrokerPositionSyncOutcome.AMBIGUOUS_MATCH,
+                    None,
+                    "multiple broker records share the established position identity",
+                )
             return BrokerPositionSyncResult(
                 BrokerPositionSyncOutcome.UNKNOWN_BROKER_POSITION,
-                snapshot,
-                "broker position identity is not associated with an ASTER position",
+                snapshots[0] if len(snapshots) == 1 else None,
+                "broker position identity is not present in authoritative broker state",
             )
-        if snapshot.broker_position_id != known_broker_position_id:
+        if len(snapshots) == 1:
             return BrokerPositionSyncResult(
                 BrokerPositionSyncOutcome.UNKNOWN_BROKER_POSITION,
-                snapshot,
-                "broker position identity does not match the established ASTER identity",
+                snapshots[0],
+                "broker position has no established ASTER identity",
             )
-        return BrokerPositionSyncResult(BrokerPositionSyncOutcome.MATCH, snapshot)
+        return BrokerPositionSyncResult(
+            BrokerPositionSyncOutcome.AMBIGUOUS_MATCH,
+            None,
+            "multiple broker positions cannot be attributed automatically",
+        )
 
 
 def build_broker_order_request(
