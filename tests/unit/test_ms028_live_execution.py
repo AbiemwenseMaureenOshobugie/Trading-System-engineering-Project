@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 
 from trading_system.domain import (
-    BrokerOrderOutcome, BrokerOrderSnapshot, ConfirmationType, DecisionCandidate,
+    BrokerOrderOutcome, BrokerOrderSnapshot, BrokerSubmissionResult, ConfirmationType, DecisionCandidate,
     DecisionResult, DecisionStatus, Direction, ExecutionState, FillClassification,
     GovernanceResult, GovernanceStatus, LiveAuthorizationStatus, RiskResult, RiskStatus,
 )
@@ -61,7 +61,7 @@ class Broker:
         quantity = request.requested_quantity
         executed = quantity if self.outcome is BrokerOrderOutcome.FILLED else Decimal("0")
         price = Decimal("1.1000") if executed else None
-        return BrokerOrderSnapshot("BO-1", self.outcome, quantity, executed, price, self.outcome.value, NOW)
+        return BrokerSubmissionResult(transmission_status=TransmissionStatus.TRANSMITTED, snapshot=BrokerOrderSnapshot("BO-1", self.outcome, quantity, executed, price, self.outcome.value, NOW), evidence=None)
     def get_order(self, broker_order_id):
         return BrokerOrderSnapshot("BO-1", self.outcome, Decimal("1000"), Decimal("1000") if self.outcome is BrokerOrderOutcome.FILLED else Decimal("0"), Decimal("1.1000") if self.outcome is BrokerOrderOutcome.FILLED else None, self.outcome.value, NOW)
 
@@ -120,7 +120,7 @@ def test_partial_fill_stays_submitted_until_terminal_disposition():
         def submit(self, request):
             self.calls += 1
             quantity = request.requested_quantity
-            return BrokerOrderSnapshot("BO-2", BrokerOrderOutcome.PARTIALLY_FILLED, quantity, Decimal("600"), Decimal("1.1001"), "PARTIAL", NOW)
+            return BrokerSubmissionResult(transmission_status=TransmissionStatus.TRANSMITTED, snapshot=BrokerOrderSnapshot("BO-2", BrokerOrderOutcome.PARTIALLY_FILLED, quantity, Decimal("600"), Decimal("1.1001"), "PARTIAL", NOW), evidence=None)
         def get_order(self, broker_order_id):
             return BrokerOrderSnapshot("BO-2", BrokerOrderOutcome.CANCELLED, Decimal("1000"), Decimal("600"), Decimal("1.1001"), "CANCELLED", NOW)
     broker = PartialBroker()
