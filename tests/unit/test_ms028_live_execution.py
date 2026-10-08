@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 
 from trading_system.domain import (
-    BrokerOrderOutcome, BrokerOrderSnapshot, BrokerSubmissionResult, ConfirmationType, DecisionCandidate,
+    BrokerOrderOutcome, BrokerOrderSnapshot, BrokerSubmissionResult, ConfirmationType, TransmissionStatus, DecisionCandidate,
     DecisionResult, DecisionStatus, Direction, ExecutionState, FillClassification,
     GovernanceResult, GovernanceStatus, LiveAuthorizationStatus, RiskResult, RiskStatus,
 )
