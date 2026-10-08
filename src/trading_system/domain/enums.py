@@ -100,3 +100,24 @@ class AIObservationConsumer(StrEnum):
     RESEARCH = "RESEARCH"
     JOURNAL = "JOURNAL"
     ANALYTICS = "ANALYTICS"
+
+
+class LiveAuthorizationStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    CONSUMED = "CONSUMED"
+
+
+class BrokerOrderOutcome(StrEnum):
+    PENDING = "PENDING"
+    PARTIALLY_FILLED = "PARTIALLY_FILLED"
+    FILLED = "FILLED"
+    REJECTED = "REJECTED"
+    CANCELLED = "CANCELLED"
+    EXPIRED = "EXPIRED"
+    UNKNOWN = "UNKNOWN"
+
+
+class FillClassification(StrEnum):
+    NONE = "NONE"
+    FULL = "FULL"
+    PARTIAL = "PARTIAL"

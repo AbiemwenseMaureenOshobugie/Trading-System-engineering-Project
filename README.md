@@ -6,9 +6,9 @@ A serious, auditable Forex trading decision-support and eventual controlled-exec
 
 ## Current development status
 
-**Current milestone:** **MS-0.27 — Production Deployment Contract**
+**Current milestone:** **MS-0.28 — Live Execution Contract**
 
-**Status:** **Specification accepted and canonical; implementation validated on PR #33**
+**Status:** **Canonical specification frozen; implementation and runtime validation in progress**
 
 The canonical MS-0.27 specification was merged into main at:
 
@@ -92,6 +92,7 @@ Key milestone specifications include:
 - docs/strategy/ms-0.12-mt5-demo-adapter.md
 - docs/strategy/ms-0.13-live-market-data-adapter.md
 - docs/strategy/ms-0.27-production-deployment.md
+- docs/strategy/ms-0.28-live-execution-contract.md
 
 ## Development discipline
 

@@ -1,8 +1,8 @@
 """Canonical domain contracts."""
 
 from .enums import (
-    AIObservationConsumer, AIObservationStatus, ConfirmationType, DecisionStatus, Direction, ExecutionState, ExitExecutionState, ExitType,
-    GovernanceStatus, GoverningKeyLevelStatus, KeyLevelSource, QualificationContextStatus, Regime, RiskStatus, SwingKind, Timeframe,
+    AIObservationConsumer, AIObservationStatus, BrokerOrderOutcome, ConfirmationType, DecisionStatus, Direction, ExecutionState, FillClassification, ExitExecutionState, ExitType,
+    GovernanceStatus, GoverningKeyLevelStatus, KeyLevelSource, LiveAuthorizationStatus, QualificationContextStatus, Regime, RiskStatus, SwingKind, Timeframe,
 )
 from .journal import TradeJournalEntry
 from .observation import (
@@ -16,9 +16,9 @@ from .observation import (
     ObservationStatus,
 )
 from .models import (
-    AIObservation, AuditRecord, ConfirmationSequence, DecisionCandidate, DecisionRequest,
+    AIObservation, AuditRecord, BrokerOrderSnapshot, ConfirmationSequence, DecisionCandidate, DecisionRequest,
     DecisionResult, ExecutionRecord, GoverningKeyLevelRequest, GoverningKeyLevelResult, ExitExecutionRecord, ExitInstruction, ExitPaperFill, GovernanceRequest, GovernanceResult, Position,
-    KeyLevel, MarketCandle, MarketStructureState, PaperFill, PaperOrder,
+    KeyLevel, LiveExecutionAuthorization, LiveExecutionRecord, MarketCandle, MarketStructureState, PaperFill, PaperOrder,
     PriceZone, RiskRequest, RiskResult, SwingPoint,
 )
 from .performance import PerformanceSnapshot
