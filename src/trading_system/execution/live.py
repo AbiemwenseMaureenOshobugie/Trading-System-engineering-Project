@@ -8,7 +8,8 @@ from decimal import Decimal
 from typing import Callable
 
 from trading_system.domain import (
-    BrokerOrderOutcome, BrokerOrderSnapshot, DecisionCandidate, DecisionResult,
+    BrokerDiscoveryOutcome, BrokerDiscoveryRequest, BrokerOrderOutcome, BrokerOrderRequest,
+    BrokerOrderSnapshot, DecisionCandidate, DecisionResult,
     DecisionStatus, ExecutionState, FillClassification, GovernanceResult,
     GovernanceStatus, LiveAuthorizationStatus, LiveExecutionAuthorization,
     LiveExecutionRecord, RiskResult, RiskStatus, TransmissionStatus,
