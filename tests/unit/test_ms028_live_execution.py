@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 
 from trading_system.domain import (
-    BrokerOrderOutcome, BrokerOrderSnapshot, ConfirmationType, DecisionCandidate,
+    BrokerOrderOutcome, BrokerOrderSnapshot, BrokerSubmissionResult, ConfirmationType, TransmissionStatus, DecisionCandidate,
     DecisionResult, DecisionStatus, Direction, ExecutionState, FillClassification,
     GovernanceResult, GovernanceStatus, LiveAuthorizationStatus, RiskResult, RiskStatus,
 )
@@ -56,11 +56,12 @@ class Store:
 
 class Broker:
     def __init__(self, outcome=BrokerOrderOutcome.FILLED): self.outcome = outcome; self.calls = 0
-    def submit(self, *, candidate, quantity):
+    def submit(self, request):
         self.calls += 1
+        quantity = request.requested_quantity
         executed = quantity if self.outcome is BrokerOrderOutcome.FILLED else Decimal("0")
         price = Decimal("1.1000") if executed else None
-        return BrokerOrderSnapshot("BO-1", self.outcome, quantity, executed, price, self.outcome.value, NOW)
+        return BrokerSubmissionResult(transmission_status=TransmissionStatus.TRANSMITTED, snapshot=BrokerOrderSnapshot("BO-1", self.outcome, quantity, executed, price, self.outcome.value, NOW), evidence=None)
     def get_order(self, broker_order_id):
         return BrokerOrderSnapshot("BO-1", self.outcome, Decimal("1000"), Decimal("1000") if self.outcome is BrokerOrderOutcome.FILLED else Decimal("0"), Decimal("1.1000") if self.outcome is BrokerOrderOutcome.FILLED else None, self.outcome.value, NOW)
 
@@ -116,9 +117,10 @@ def test_live_authorization_cannot_be_reused():
 def test_partial_fill_stays_submitted_until_terminal_disposition():
     _, store, a, audit = issue_auth()
     class PartialBroker(Broker):
-        def submit(self, *, candidate, quantity):
+        def submit(self, request):
             self.calls += 1
-            return BrokerOrderSnapshot("BO-2", BrokerOrderOutcome.PARTIALLY_FILLED, quantity, Decimal("600"), Decimal("1.1001"), "PARTIAL", NOW)
+            quantity = request.requested_quantity
+            return BrokerSubmissionResult(transmission_status=TransmissionStatus.TRANSMITTED, snapshot=BrokerOrderSnapshot("BO-2", BrokerOrderOutcome.PARTIALLY_FILLED, quantity, Decimal("600"), Decimal("1.1001"), "PARTIAL", NOW), evidence=None)
         def get_order(self, broker_order_id):
             return BrokerOrderSnapshot("BO-2", BrokerOrderOutcome.CANCELLED, Decimal("1000"), Decimal("600"), Decimal("1.1001"), "CANCELLED", NOW)
     broker = PartialBroker()
@@ -133,7 +135,7 @@ def test_partial_fill_stays_submitted_until_terminal_disposition():
 def test_unknown_outcome_is_preserved_without_resubmission():
     _, store, a, audit = issue_auth()
     broker = Broker()
-    def fail(**kwargs):
+    def fail(request):
         broker.calls += 1
         raise TimeoutError("timeout")
     broker.submit = fail

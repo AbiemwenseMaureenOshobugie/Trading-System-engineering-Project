@@ -32,7 +32,8 @@ from trading_system.domain import (
     RiskRequest,
     RiskResult,
     LiveExecutionAuthorization, LiveExecutionRecord, BrokerOrderSnapshot,
-    Timeframe,
+    BrokerOrderRequest, BrokerSubmissionResult, BrokerDiscoveryRequest, BrokerDiscoveryResult,
+    BrokerPositionSnapshot, Timeframe,
 )
 from trading_system.domain.qualification import QualificationContextResult
 
@@ -259,7 +260,7 @@ __all__ = [
     "KeyLevelEnginePort", "MarketDataPort", "MarketExecutionContextPort",
     "NoisePolicyPort", "ObservationQualificationContextPort", "AIObservationRepositoryPort",
     "ObservationRepositoryPort",
-    "LiveAuthorizationPort", "LiveBrokerReadPort", "LiveBrokerSubmissionPort", "RiskEnginePort", "SetupClassifierPort", "SessionPolicyPort", "TradeJournalPort", "VolatilityPolicyPort",
+    "LiveAuthorizationPort", "BrokerReadPort", "BrokerSubmissionPort", "BrokerDiscoveryPort", "BrokerPositionReadPort", "RiskEnginePort", "SetupClassifierPort", "SessionPolicyPort", "TradeJournalPort", "VolatilityPolicyPort",
 ]
 
 
@@ -273,12 +274,25 @@ class LiveAuthorizationPort(Protocol):
 
 
 @runtime_checkable
-class LiveBrokerSubmissionPort(Protocol):
-    """Submit one already-authorized live order to the external broker."""
-    def submit(self, *, candidate: DecisionCandidate, quantity: Decimal) -> BrokerOrderSnapshot: ...
+class BrokerSubmissionPort(Protocol):
+    """Submit one already-authorized broker-neutral execution instruction."""
+    def submit(self, request: BrokerOrderRequest) -> BrokerSubmissionResult: ...
 
 
 @runtime_checkable
-class LiveBrokerReadPort(Protocol):
+class BrokerReadPort(Protocol):
     """Read broker state during reconciliation; never submits or modifies orders."""
     def get_order(self, broker_order_id: str) -> BrokerOrderSnapshot: ...
+
+
+@runtime_checkable
+class BrokerDiscoveryPort(Protocol):
+    """Perform deterministic, read-only discovery for one authorized execution."""
+    def discover(self, request: BrokerDiscoveryRequest) -> BrokerDiscoveryResult: ...
+
+
+@runtime_checkable
+class BrokerPositionReadPort(Protocol):
+    """Read authoritative broker position state without modifying it."""
+    def get_position(self, broker_position_id: str) -> BrokerPositionSnapshot | None: ...
+    def list_positions(self, symbol: str) -> Sequence[BrokerPositionSnapshot]: ...

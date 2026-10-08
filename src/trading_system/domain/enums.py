@@ -121,3 +121,22 @@ class FillClassification(StrEnum):
     NONE = "NONE"
     FULL = "FULL"
     PARTIAL = "PARTIAL"
+
+
+class TransmissionStatus(StrEnum):
+    NOT_TRANSMITTED = "NOT_TRANSMITTED"
+    TRANSMITTED = "TRANSMITTED"
+    UNKNOWN = "UNKNOWN"
+
+
+class BrokerDiscoveryOutcome(StrEnum):
+    UNIQUE_MATCH = "UNIQUE_MATCH"
+    NO_MATCH = "NO_MATCH"
+    AMBIGUOUS_MATCH = "AMBIGUOUS_MATCH"
+
+
+class BrokerPositionSyncOutcome(StrEnum):
+    MATCH = "MATCH"
+    BROKER_POSITION_MISSING = "BROKER_POSITION_MISSING"
+    UNKNOWN_BROKER_POSITION = "UNKNOWN_BROKER_POSITION"
+    AMBIGUOUS_MATCH = "AMBIGUOUS_MATCH"

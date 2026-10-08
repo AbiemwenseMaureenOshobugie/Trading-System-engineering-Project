@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Callable
 
 from trading_system.domain import (
-    BrokerOrderOutcome, BrokerOrderSnapshot, DecisionCandidate, DecisionResult,
+    BrokerDiscoveryOutcome, BrokerDiscoveryRequest, BrokerOrderOutcome, BrokerOrderRequest,
+    BrokerOrderSnapshot, DecisionCandidate, DecisionResult,
     DecisionStatus, ExecutionState, FillClassification, GovernanceResult,
     GovernanceStatus, LiveAuthorizationStatus, LiveExecutionAuthorization,
-    LiveExecutionRecord, RiskResult, RiskStatus,
+    LiveExecutionRecord, RiskResult, RiskStatus, TransmissionStatus,
 )
 from trading_system.runtime.audit import RuntimeAuditRecord
+from trading_system.execution.broker import BrokerAdapterBoundary
 from trading_system.runtime.deployment import (
     DeploymentMode, ExecutionAuthorization, OperationalCapability,
 )
@@ -123,15 +126,42 @@ class LiveExecutionEngine:
         self._validate(candidate, decision, risk, governance, runtime_authorization,
                        live_authorization, runtime_id, runtime_context_id, now)
         self._authorizations.consume(live_authorization.authorization_id, now=now)
+        request = BrokerOrderRequest(
+            decision_id=candidate.decision_id,
+            authorization_id=live_authorization.authorization_id,
+            symbol=candidate.symbol,
+            direction=candidate.direction,
+            requested_quantity=risk.position_size or Decimal("0"),
+            requested_entry_price=candidate.signal_entry_price,
+        )
         try:
-            snapshot = self._broker.submit(candidate=candidate, quantity=risk.position_size or Decimal("0"))
+            result = self._broker.submit(request)
+            BrokerAdapterBoundary.validate_submission(request, result)
         except Exception as exc:
             record = self._unknown_record(candidate, live_authorization, runtime_id,
                                           runtime_context_id, risk.position_size or Decimal("0"), now, str(exc))
-            self._emit_audit(now, runtime_id, "LIVE_EXECUTION_UNKNOWN", record.execution_id, "SUBMITTED")
+            self._emit_audit(now, runtime_id, "LIVE_EXECUTION_UNKNOWN", record.execution_id, "UNKNOWN")
+            return record
+        if result.snapshot is None:
+            record = self._unknown_record(
+                candidate, live_authorization, runtime_id, runtime_context_id,
+                risk.position_size or Decimal("0"), now,
+                "submission returned no broker snapshot",
+            )
+            if result.transmission_status is TransmissionStatus.NOT_TRANSMITTED:
+                record = replace(
+                    record,
+                    state=ExecutionState.FAILED,
+                    broker_outcome=BrokerOrderOutcome.UNKNOWN,
+                    reconciliation_required=False,
+                    manual_reconciliation_required=False,
+                    failure_reason="submission not transmitted",
+                )
+            self._emit_audit(now, runtime_id, "LIVE_EXECUTION_SUBMISSION_OUTCOME",
+                             record.execution_id, record.state.value)
             return record
         record = self._from_snapshot(candidate, live_authorization, runtime_id,
-                                     runtime_context_id, snapshot, now)
+                                     runtime_context_id, result.snapshot, now)
         self._emit_audit(now, runtime_id, "LIVE_EXECUTION_SUBMISSION_OUTCOME", record.execution_id, record.state.value)
         return record
 
@@ -193,6 +223,34 @@ class LiveExecutionEngine:
             reconciliation_required=recon, manual_reconciliation_required=manual,
             failure_reason=existing.failure_reason if existing else None,
         )
+
+    def discover_unknown_submission(self, record: LiveExecutionRecord, discovery_port) -> LiveExecutionRecord:
+        """Resolve an unknown submission only through read-only discovery."""
+        if not record.reconciliation_required or record.broker_order_id:
+            return record
+        result = discovery_port.discover(BrokerDiscoveryRequest(record.authorization_id))
+        BrokerAdapterBoundary.validate_discovery(result)
+        if result.outcome is BrokerDiscoveryOutcome.UNIQUE_MATCH and result.snapshot is not None:
+            updated = self._from_snapshot(
+                None, None, record.runtime_id, record.runtime_context_id,
+                result.snapshot, self._utc(self._clock()), existing=record,
+            )
+            self._emit_audit(
+                updated.execution_timestamp,
+                record.runtime_id,
+                "LIVE_EXECUTION_DISCOVERY_MATCH",
+                record.execution_id,
+                updated.state.value,
+            )
+            return updated
+        self._emit_audit(
+            self._utc(self._clock()),
+            record.runtime_id,
+            "LIVE_EXECUTION_DISCOVERY_UNRESOLVED",
+            record.execution_id,
+            result.outcome.value,
+        )
+        return record
 
     def _unknown_record(self, candidate, authorization, runtime_id, runtime_context_id,
                         quantity, now, reason):

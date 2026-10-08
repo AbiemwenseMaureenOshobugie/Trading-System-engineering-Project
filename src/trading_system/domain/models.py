@@ -13,6 +13,8 @@ from typing import Optional
 from .enums import (
     AIObservationConsumer,
     AIObservationStatus,
+    BrokerDiscoveryOutcome,
+    BrokerPositionSyncOutcome,
     ConfirmationType,
     DecisionStatus,
     Direction,
@@ -24,6 +26,7 @@ from .enums import (
     KeyLevelSource,
     LiveAuthorizationStatus,
     BrokerOrderOutcome,
+    TransmissionStatus,
     FillClassification,
     Regime,
     RiskStatus,
@@ -468,12 +471,107 @@ class BrokerOrderSnapshot:
     fill_price: Optional[Decimal]
     broker_status: str
     observed_at: datetime
+    evidence_ref: Optional[str] = None
 
     def __post_init__(self) -> None:
+        if not self.broker_order_id.strip(): raise ValueError("broker_order_id must not be blank")
         if self.observed_at.tzinfo is None: raise ValueError("observed_at must be timezone-aware")
         if self.requested_quantity <= 0: raise ValueError("requested_quantity must be positive")
         if self.executed_quantity < 0 or self.executed_quantity > self.requested_quantity:
             raise ValueError("executed_quantity must be within requested quantity")
+
+
+@dataclass(frozen=True, slots=True)
+class BrokerEvidence:
+    """Broker-specific evidence preserved outside canonical broker semantics."""
+    evidence_ref: str
+    broker_name: str
+    adapter_name: str
+    adapter_version: str
+    native_status: str
+    native_code: Optional[str]
+    normalized_outcome: BrokerOrderOutcome
+    captured_at: datetime
+    details: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.evidence_ref.strip(): raise ValueError("evidence_ref must not be blank")
+        if self.captured_at.tzinfo is None: raise ValueError("captured_at must be timezone-aware")
+
+
+@dataclass(frozen=True, slots=True)
+class BrokerOrderRequest:
+    """Broker-neutral execution instruction produced from authorized ASTER state."""
+    decision_id: str
+    authorization_id: str
+    symbol: str
+    direction: Direction
+    requested_quantity: Decimal
+    requested_entry_price: Decimal
+
+    def __post_init__(self) -> None:
+        if not self.decision_id.strip() or not self.authorization_id.strip(): raise ValueError("decision_id and authorization_id must not be blank")
+        if not self.symbol.strip(): raise ValueError("symbol must not be blank")
+        if self.requested_quantity <= 0: raise ValueError("requested_quantity must be positive")
+        if self.requested_entry_price <= 0: raise ValueError("requested_entry_price must be positive")
+
+
+@dataclass(frozen=True, slots=True)
+class BrokerSubmissionResult:
+    """Submission certainty and optional broker-side evidence."""
+    transmission_status: TransmissionStatus
+    snapshot: Optional["BrokerOrderSnapshot"]
+    evidence: Optional[BrokerEvidence]
+
+    def __post_init__(self) -> None:
+        if self.transmission_status is TransmissionStatus.NOT_TRANSMITTED and (self.snapshot is not None or self.evidence is not None):
+            raise ValueError("NOT_TRANSMITTED cannot contain broker evidence")
+
+
+@dataclass(frozen=True, slots=True)
+class BrokerDiscoveryRequest:
+    """Execution-scoped read-only broker discovery request."""
+    authorization_id: str
+
+    def __post_init__(self) -> None:
+        if not self.authorization_id.strip(): raise ValueError("authorization_id must not be blank")
+
+
+@dataclass(frozen=True, slots=True)
+class BrokerDiscoveryResult:
+    """Read-only discovery result; identity before state."""
+    outcome: BrokerDiscoveryOutcome
+    snapshot: Optional["BrokerOrderSnapshot"]
+    evidence: Optional[BrokerEvidence]
+
+    def __post_init__(self) -> None:
+        if self.outcome is BrokerDiscoveryOutcome.UNIQUE_MATCH and self.snapshot is None: raise ValueError("UNIQUE_MATCH requires a broker snapshot")
+        if self.outcome is not BrokerDiscoveryOutcome.UNIQUE_MATCH and self.snapshot is not None: raise ValueError("only UNIQUE_MATCH may contain a selected snapshot")
+
+
+@dataclass(frozen=True, slots=True)
+class BrokerPositionSnapshot:
+    """Authoritative broker position evidence."""
+    broker_position_id: str
+    symbol: str
+    direction: Direction
+    quantity: Decimal
+    average_entry_price: Decimal
+    observed_at: datetime
+    evidence_ref: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        if not self.broker_position_id.strip() or not self.symbol.strip(): raise ValueError("broker_position_id and symbol must not be blank")
+        if self.quantity <= 0 or self.average_entry_price <= 0: raise ValueError("position quantity and average entry price must be positive")
+        if self.observed_at.tzinfo is None: raise ValueError("observed_at must be timezone-aware")
+
+
+@dataclass(frozen=True, slots=True)
+class BrokerPositionSyncResult:
+    """Position synchronization outcome; never an execution instruction."""
+    outcome: BrokerPositionSyncOutcome
+    snapshot: Optional[BrokerPositionSnapshot]
+    reason: Optional[str] = None
 
 
 @dataclass(frozen=True, slots=True)

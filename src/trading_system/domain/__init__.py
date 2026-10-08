@@ -1,7 +1,7 @@
 """Canonical domain contracts."""
 
 from .enums import (
-    AIObservationConsumer, AIObservationStatus, BrokerOrderOutcome, ConfirmationType, DecisionStatus, Direction, ExecutionState, FillClassification, ExitExecutionState, ExitType,
+    AIObservationConsumer, AIObservationStatus, BrokerDiscoveryOutcome, BrokerOrderOutcome, BrokerPositionSyncOutcome, ConfirmationType, DecisionStatus, Direction, ExecutionState, FillClassification, ExitExecutionState, ExitType, TransmissionStatus,
     GovernanceStatus, GoverningKeyLevelStatus, KeyLevelSource, LiveAuthorizationStatus, QualificationContextStatus, Regime, RiskStatus, SwingKind, Timeframe,
 )
 from .journal import TradeJournalEntry
@@ -16,7 +16,7 @@ from .observation import (
     ObservationStatus,
 )
 from .models import (
-    AIObservation, AuditRecord, BrokerOrderSnapshot, ConfirmationSequence, DecisionCandidate, DecisionRequest,
+    AIObservation, AuditRecord, BrokerEvidence, BrokerOrderRequest, BrokerOrderSnapshot, BrokerSubmissionResult, BrokerDiscoveryRequest, BrokerDiscoveryResult, BrokerPositionSnapshot, BrokerPositionSyncResult, ConfirmationSequence, DecisionCandidate, DecisionRequest,
     DecisionResult, ExecutionRecord, GoverningKeyLevelRequest, GoverningKeyLevelResult, ExitExecutionRecord, ExitInstruction, ExitPaperFill, GovernanceRequest, GovernanceResult, Position,
     KeyLevel, LiveExecutionAuthorization, LiveExecutionRecord, MarketCandle, MarketStructureState, PaperFill, PaperOrder,
     PriceZone, RiskRequest, RiskResult, SwingPoint,
@@ -29,6 +29,9 @@ __all__ = [
     "AIObservationConsumer",
     "AIObservationStatus",
     "AuditRecord",
+    "BrokerEvidence", "BrokerOrderRequest", "BrokerOrderSnapshot", "BrokerSubmissionResult",
+    "BrokerDiscoveryRequest", "BrokerDiscoveryResult", "BrokerPositionSnapshot", "BrokerPositionSyncResult",
+    "BrokerDiscoveryOutcome", "BrokerPositionSyncOutcome", "TransmissionStatus",
     "CandidateOutcome",
     "MarketDataQuality",
     "ObservationDataWindow",
