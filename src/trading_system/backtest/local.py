@@ -18,12 +18,11 @@ from trading_system.backtest.engine import BacktestEngine
 from trading_system.backtest.models import ReplayAccountSnapshot, ReplayDecision
 from trading_system.decision import DecisionEngine
 from trading_system.domain import (
-    AuditRecord, DecisionRequest, DecisionStatus, Direction, GovernanceRequest,
-    KeyLevel, MarketCandle, RiskRequest, RiskStatus, Timeframe,
+    AuditRecord, DecisionRequest, Direction, GovernanceRequest,
+    MarketCandle, RiskRequest, RiskStatus, Timeframe,
 )
 from trading_system.execution import ExecutionEngine, ExitExecutionEngine, ExitManager
 from trading_system.governance import GovernanceEngine
-from trading_system.journal import InMemoryTradeJournal
 from trading_system.risk import RiskEngine
 from trading_system.session import SessionPolicyEngine
 from trading_system.strategy.classification import SetupClassifier
