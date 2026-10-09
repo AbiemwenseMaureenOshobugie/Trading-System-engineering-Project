@@ -55,17 +55,15 @@ def _runtime_config_from_environment() -> RuntimeConfig:
     )
 
 
-
 def main() -> int:
     try:
         config = _runtime_config_from_environment()
-        # No fake business implementations are installed here. The single
-        # composition root reports any unresolved capabilities explicitly.
+        # Do not install fake implementations merely to make startup appear
+        # successful. The composition root reports the capabilities that are
+        # genuinely not available yet.
         dependencies = CompositionDependencies(
             credential_resolver=EnvironmentCredentialResolver(os.environ),
             history_window_resolver=None,
-            key_level_selector=None,
-            setup_classifier=None,
             qualification_context=None,
         )
         compose_runtime(config, dependencies=dependencies)
