@@ -15,7 +15,7 @@ from typing import Mapping, Sequence
 
 from trading_system.analytics import PerformanceAnalytics
 from trading_system.backtest.engine import BacktestEngine
-from trading_system.backtest.models import ReplayAccountSnapshot, ReplayDecision
+from trading_system.backtest.models import BacktestConfig, BacktestResult, ReplayAccountSnapshot, ReplayDecision
 from trading_system.decision import DecisionEngine
 from trading_system.domain import (
     AuditRecord, DecisionRequest, Direction, GovernanceRequest,
@@ -272,3 +272,47 @@ def _utc(value: str) -> datetime:
     if result.tzinfo is None:
         raise ValueError("timestamp must include a timezone")
     return result.astimezone(timezone.utc)
+
+
+
+def run_historical_csv_replay(
+    *,
+    symbol: str,
+    h1_csv: str | Path,
+    m15_csv: str | Path,
+    start: datetime,
+    end: datetime,
+    initial_account_equity: Decimal,
+    qualification: ReplayQualificationInputs,
+    backtest_id: str,
+) -> tuple[BacktestResult, RealReplayPipeline]:
+    """Load explicit H1/M15 CSVs and run the composed real-component replay.
+
+    The caller must supply the historical window and all cost/contract
+    assumptions. No network data, default valuation, or live clock is used.
+    """
+    h1 = HistoricalCSVAdapter.load(
+        path=h1_csv, symbol=symbol, timeframe=Timeframe.H1, start=start, end=end
+    )
+    m15 = HistoricalCSVAdapter.load(
+        path=m15_csv, symbol=symbol, timeframe=Timeframe.M15, start=start, end=end
+    )
+    source_hashes = sorted({c.source.rsplit(":", 1)[-1] for c in (*h1, *m15)})
+    config = BacktestConfig(
+        backtest_id=backtest_id,
+        strategy_versions=(
+            "MS-0.1A", "MS-0.2", "MS-0.3", "MS-0.22",
+            "MS-0.4", "MS-0.5", "MS-0.6", "MS-0.7", "MS-0.10", "MS-0.11",
+        ),
+        symbol_universe=(symbol.upper(),),
+        timeframes=("H1", "M15"),
+        historical_data_source="local_csv",
+        historical_data_version=sha256("|".join(source_hashes).encode()).hexdigest(),
+        start_timestamp=start,
+        end_timestamp=end,
+        initial_account_equity=initial_account_equity,
+        replay_mode="PAPER",
+    )
+    engine, pipeline = compose_backtest_engine(qualification=qualification)
+    result = engine.run(config=config, candles=tuple((*h1, *m15)))
+    return result, pipeline
