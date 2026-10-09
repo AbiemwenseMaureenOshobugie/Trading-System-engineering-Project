@@ -48,17 +48,17 @@ def test_bounded_csv_replay_runs_real_pipeline_without_future_data(tmp_path: Pat
     h1 = tmp_path / "eurusd_h1.csv"
     m15 = tmp_path / "eurusd_m15.csv"
     h1.write_text(
-        "timestamp_open,timestamp_close,open,high,low,close\\n"
-        "2026-01-05T07:00:00Z,2026-01-05T08:00:00Z,1.1000,1.1020,1.0990,1.1010\\n"
-        "2026-01-05T08:00:00Z,2026-01-05T09:00:00Z,1.1010,1.1030,1.1000,1.1020\\n"
-        "2026-01-05T09:00:00Z,2026-01-05T10:00:00Z,1.1020,1.1040,1.1010,1.1030\\n",
+        "timestamp_open,timestamp_close,open,high,low,close\n"
+        "2026-01-05T07:00:00Z,2026-01-05T08:00:00Z,1.1000,1.1020,1.0990,1.1010\n"
+        "2026-01-05T08:00:00Z,2026-01-05T09:00:00Z,1.1010,1.1030,1.1000,1.1020\n"
+        "2026-01-05T09:00:00Z,2026-01-05T10:00:00Z,1.1020,1.1040,1.1010,1.1030\n",
         encoding="utf-8",
     )
     m15.write_text(
-        "timestamp_open,timestamp_close,open,high,low,close\\n"
-        "2026-01-05T09:00:00Z,2026-01-05T09:15:00Z,1.1020,1.1030,1.1010,1.1025\\n"
-        "2026-01-05T09:15:00Z,2026-01-05T09:30:00Z,1.1025,1.1040,1.1020,1.1035\\n"
-        "2026-01-05T09:30:00Z,2026-01-05T09:45:00Z,1.1035,1.1045,1.1030,1.1040\\n",
+        "timestamp_open,timestamp_close,open,high,low,close\n"
+        "2026-01-05T09:00:00Z,2026-01-05T09:15:00Z,1.1020,1.1030,1.1010,1.1025\n"
+        "2026-01-05T09:15:00Z,2026-01-05T09:30:00Z,1.1025,1.1040,1.1020,1.1035\n"
+        "2026-01-05T09:30:00Z,2026-01-05T09:45:00Z,1.1035,1.1045,1.1030,1.1040\n",
         encoding="utf-8",
     )
     qualification = ReplayQualificationInputs(
