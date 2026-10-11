@@ -94,6 +94,7 @@ def test_committed_eurusd_files_replay_on_real_utc_data() -> None:
                 "structure_regime": pipeline.trace[-1].get("structure_regime"),
                 "confirmation_count": pipeline.trace[-1].get("confirmation_count"),
                 "candidate_count": pipeline.trace[-1].get("candidate_count"),
+                "structural_events": list(pipeline.trace[-1].get("structural_events", ())),
             } if pipeline.trace else None,
         },
     }
