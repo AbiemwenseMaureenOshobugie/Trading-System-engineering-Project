@@ -68,7 +68,7 @@ def test_bounded_csv_replay_runs_real_pipeline_without_future_data(tmp_path: Pat
     )
     result, pipeline = run_historical_csv_replay(
         symbol="EURUSD", h1_csv=h1, m15_csv=m15,
-        start=datetime(2026, 1, 5, 7, tzinfo=UTC),
+        start=datetime(2026, 1, 5, 9, 15, tzinfo=UTC),
         end=datetime(2026, 1, 5, 10, tzinfo=UTC),
         initial_account_equity=Decimal("10000"),
         qualification=qualification, backtest_id="TEST-CSV-REPLAY",
