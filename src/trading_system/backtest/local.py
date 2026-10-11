@@ -258,6 +258,12 @@ class RealReplayPipeline:
         direction = (Direction.BUY if structure.regime.value == "UPTREND"
                      else Direction.SELL if structure.regime.value == "DOWNTREND" else None)
         if direction is None:
+            self.trace.append({
+                "cutoff": cutoff,
+                "structure_regime": structure.regime.value,
+                "structural_events": structure.structural_events,
+                "reason": "NO_ESTABLISHED_H1_DIRECTION",
+            })
             return ()
         selected = self.selector.select(
             GoverningKeyLevelRequest(
@@ -279,6 +285,14 @@ class RealReplayPipeline:
             setup_key_level=selected.selected_key_level,
         ))
         candidates = self.classifier.classify(confirmations)
+        self.trace.append({
+            "cutoff": cutoff,
+            "structure_regime": structure.regime.value,
+            "governing_key_level_id": selected.selected_key_level.key_level_id,
+            "confirmation_count": len(confirmations),
+            "candidate_count": len(candidates),
+            "reason": "CONFIRMATION_EVALUATED",
+        })
         candles_by_ref = {c.timestamp_open.isoformat(): c for c in visible}
         results: list[ReplayDecision] = []
         for original in candidates:
