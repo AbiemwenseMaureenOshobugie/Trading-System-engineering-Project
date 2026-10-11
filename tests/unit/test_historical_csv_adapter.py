@@ -33,7 +33,7 @@ def test_rejects_duplicate_candle_timestamp(tmp_path: Path):
 
 def test_rejects_missing_columns(tmp_path: Path):
     path = tmp_path / "bad.csv"
-    path.write_text("timestamp_open,open,high,low,close\n", encoding="utf-8")
+    path.write_text("timestamp_open,open,high,low\n", encoding="utf-8")
     with pytest.raises(HistoricalCSVError, match="missing OHLC columns"):
         HistoricalCSVAdapter.load(
             path=path, symbol="EURUSD", timeframe=Timeframe.H1,
@@ -58,7 +58,8 @@ def test_bounded_csv_replay_runs_real_pipeline_without_future_data(tmp_path: Pat
         "timestamp_open,timestamp_close,open,high,low,close\n"
         "2026-01-05T09:00:00Z,2026-01-05T09:15:00Z,1.1020,1.1030,1.1010,1.1025\n"
         "2026-01-05T09:15:00Z,2026-01-05T09:30:00Z,1.1025,1.1040,1.1020,1.1035\n"
-        "2026-01-05T09:30:00Z,2026-01-05T09:45:00Z,1.1035,1.1045,1.1030,1.1040\n",
+        "2026-01-05T09:30:00Z,2026-01-05T09:45:00Z,1.1035,1.1045,1.1030,1.1040\n"
+        "2026-01-05T09:45:00Z,2026-01-05T10:00:00Z,1.1040,1.1050,1.1035,1.1045\n",
         encoding="utf-8",
     )
     qualification = ReplayQualificationInputs(
@@ -82,8 +83,8 @@ def test_bounded_csv_replay_runs_real_pipeline_without_future_data(tmp_path: Pat
 def test_loads_headerless_tab_separated_data_with_explicit_timezone(tmp_path: Path):
     path = tmp_path / "EURUSD60.csv"
     path.write_text(
-        "2026-01-01 00:00:00\\t1.1000\\t1.1020\\t1.0990\\t1.1010\\t100\\n"
-        "2026-01-01 01:00:00\\t1.1010\\t1.1030\\t1.1000\\t1.1020\\t120\\n",
+        "2026-01-01 00:00:00\t1.1000\t1.1020\t1.0990\t1.1010\t100\n"
+        "2026-01-01 01:00:00\t1.1010\t1.1030\t1.1000\t1.1020\t120\n",
         encoding="utf-8",
     )
     candles = HistoricalCSVAdapter.load(
@@ -100,8 +101,8 @@ def test_loads_headerless_tab_separated_data_with_explicit_timezone(tmp_path: Pa
 def test_loads_etc_utc_export_header_and_derives_m15_close(tmp_path: Path):
     path = tmp_path / "EURUSD15.csv"
     path.write_text(
-        "Etc/UTC,Open,High,Low,Close,Volume\\n"
-        "2026-01-01 00:00:00,1.1000,1.1020,1.0990,1.1010,100\\n",
+        "Etc/UTC,Open,High,Low,Close,Volume\n"
+        "2026-01-01 00:00:00,1.1000,1.1020,1.0990,1.1010,100\n",
         encoding="utf-8",
     )
     candles = HistoricalCSVAdapter.load(
@@ -116,7 +117,7 @@ def test_loads_etc_utc_export_header_and_derives_m15_close(tmp_path: Path):
 def test_rejects_naive_timestamps_without_explicit_timezone(tmp_path: Path):
     path = tmp_path / "EURUSD15.csv"
     path.write_text(
-        "2026-01-01 00:00:00\\t1.1000\\t1.1020\\t1.0990\\t1.1010\\t100\\n",
+        "2026-01-01 00:00:00\t1.1000\t1.1020\t1.0990\t1.1010\t100\n",
         encoding="utf-8",
     )
     with pytest.raises(HistoricalCSVError, match="timestamp has no timezone"):
