@@ -84,6 +84,17 @@ def test_committed_eurusd_files_replay_on_real_utc_data() -> None:
             "ordering_violations": list(result.ordering_violations),
             "ambiguous_executions": result.ambiguous_executions,
             "pipeline_trace_records": len(pipeline.trace),
+            "trace_reason_counts": {
+                reason: sum(1 for item in pipeline.trace if item.get("reason") == reason)
+                for reason in sorted({item.get("reason", "UNSPECIFIED") for item in pipeline.trace})
+            },
+            "trace_last_record": {
+                "cutoff": pipeline.trace[-1]["cutoff"].isoformat(),
+                "reason": pipeline.trace[-1].get("reason"),
+                "structure_regime": pipeline.trace[-1].get("structure_regime"),
+                "confirmation_count": pipeline.trace[-1].get("confirmation_count"),
+                "candidate_count": pipeline.trace[-1].get("candidate_count"),
+            } if pipeline.trace else None,
         },
     }
     print("ASTER_REAL_DATA_REPLAY_REPORT=" + json.dumps(report, sort_keys=True))
