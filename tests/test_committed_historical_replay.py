@@ -14,9 +14,12 @@ from decimal import Decimal
 from pathlib import Path
 
 from trading_system.backtest.local import (
+    HistoricalCSVAdapter,
     ReplayQualificationInputs,
     run_historical_csv_replay,
 )
+from trading_system.domain import Timeframe
+from trading_system.strategy.market_structure import H1MarketStructureEngine
 
 UTC = timezone.utc
 DATA = Path(__file__).resolve().parents[1] / "data" / "replay" / "eurusd"
@@ -64,8 +67,33 @@ def test_committed_eurusd_files_replay_on_real_utc_data() -> None:
         timestamp_timezone=UTC,
     )
 
+    # Diagnostic only: compare the H1 classification with the entire available
+    # history versus the last 21 completed H1 candles. This does not select or
+    # endorse either lookback; it measures whether replay outcome is history-sensitive.
+    h1_all = HistoricalCSVAdapter.load(
+        path=h1_path, symbol="EURUSD", timeframe=Timeframe.H1,
+        start=None, end=end, timestamp_timezone=UTC,
+    )
+    structure_engine = H1MarketStructureEngine()
+    full_history_state = structure_engine.evaluate(candles=h1_all, evaluation_cutoff=end)
+    recent_history_state = structure_engine.evaluate(
+        candles=h1_all[-21:], evaluation_cutoff=end
+    )
+
     report = {
         "validation_kind": "full-pipeline integration smoke test; not a performance backtest",
+        "h1_warmup_sensitivity": {
+            "full_history_candles": len(h1_all),
+            "recent_history_candles": min(21, len(h1_all)),
+            "full_history_regime": full_history_state.regime.value,
+            "recent_history_regime": recent_history_state.regime.value,
+            "full_history_meaningful_highs": len(full_history_state.meaningful_highs),
+            "full_history_meaningful_lows": len(full_history_state.meaningful_lows),
+            "recent_history_meaningful_highs": len(recent_history_state.meaningful_highs),
+            "recent_history_meaningful_lows": len(recent_history_state.meaningful_lows),
+            "full_history_latest_events": list(full_history_state.structural_events[-10:]),
+            "recent_history_latest_events": list(recent_history_state.structural_events[-10:]),
+        },
         "timezone": "UTC (user-confirmed export timezone)",
         "transaction_costs": "zero diagnostic assumptions; source files contain no spread column",
         "window_utc": {"start": start.isoformat(), "end": end.isoformat()},
