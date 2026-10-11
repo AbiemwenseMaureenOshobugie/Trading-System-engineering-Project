@@ -155,3 +155,12 @@ def test_t24_later_candidates_cannot_change_an_earlier_cutoff_state() -> None:
     assert engine.evaluate(candles=extended, evaluation_cutoff=cutoff) == engine.evaluate(
         candles=base, evaluation_cutoff=cutoff
     )
+
+
+def test_candidate_zones_use_ordered_body_to_extreme_boundaries() -> None:
+    high_candle = candle(20, "1.1000", "1.1100", "1.0950", "1.1050")
+    low_candle = candle(21, "1.1000", "1.1050", "1.0900", "1.0950")
+    high = _Candidate(20, SwingKind.HIGH, high_candle)
+    low = _Candidate(21, SwingKind.LOW, low_candle)
+    assert high.zone == PriceZone(Decimal("1.1050"), Decimal("1.1100"))
+    assert low.zone == PriceZone(Decimal("1.0900"), Decimal("1.0950"))

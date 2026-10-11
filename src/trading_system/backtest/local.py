@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import csv
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 from pathlib import Path
@@ -18,7 +18,7 @@ from trading_system.backtest.engine import BacktestEngine
 from trading_system.backtest.models import BacktestConfig, BacktestResult, ReplayAccountSnapshot, ReplayDecision
 from trading_system.decision import DecisionEngine
 from trading_system.domain import (
-    AuditRecord, DecisionRequest, Direction, GovernanceRequest,
+    AuditRecord, DecisionRequest, Direction, GovernanceRequest, GoverningKeyLevelRequest,
     MarketCandle, RiskRequest, RiskStatus, Timeframe,
 )
 from trading_system.execution import ExecutionEngine, ExitExecutionEngine, ExitManager
@@ -37,53 +37,162 @@ class HistoricalCSVError(ValueError):
 
 
 class HistoricalCSVAdapter:
-    """Load completed, validated OHLC candles from an explicit CSV file."""
+    """Load canonical CSV or headerless tab/comma-separated OHLC history.
 
-    REQUIRED = {"timestamp_open", "timestamp_close", "open", "high", "low", "close"}
+    Naive timestamps require an explicit source timezone. If no candle-close
+    column exists, close time is derived from the requested timeframe.
+    """
+
+    REQUIRED_OHLC = {"open", "high", "low", "close"}
+    TIMESTAMP_ALIASES = {"timestamp_open", "timestamp", "datetime", "date", "etc/utc"}
+    TIMEFRAME_DURATION = {
+        Timeframe.H1: timedelta(hours=1),
+        Timeframe.M15: timedelta(minutes=15),
+    }
 
     @classmethod
-    def load(cls, *, path: str | Path, symbol: str, timeframe: Timeframe,
-             start: datetime, end: datetime) -> tuple[MarketCandle, ...]:
-        if start.tzinfo is None or end.tzinfo is None or start >= end:
-            raise ValueError("start/end must be timezone-aware and start < end")
+    def load(
+        cls,
+        *,
+        path: str | Path,
+        symbol: str,
+        timeframe: Timeframe,
+        start: datetime | None,
+        end: datetime,
+        timestamp_timezone: tzinfo | None = None,
+    ) -> tuple[MarketCandle, ...]:
+        if end.tzinfo is None or (start is not None and start.tzinfo is None):
+            raise ValueError("start/end must be timezone-aware")
+        if start is not None and start >= end:
+            raise ValueError("start must precede end")
+        if timeframe not in cls.TIMEFRAME_DURATION:
+            raise HistoricalCSVError(f"unsupported timeframe: {timeframe}")
         file = Path(path)
         if not file.is_file():
             raise FileNotFoundError(file)
+
         source = f"csv:{file.resolve()}:{sha256(file.read_bytes()).hexdigest()}"
         output: list[MarketCandle] = []
         seen: set[datetime] = set()
+        previous_open: datetime | None = None
+        duration = cls.TIMEFRAME_DURATION[timeframe]
+
         with file.open("r", newline="", encoding="utf-8-sig") as handle:
-            reader = csv.DictReader(handle)
-            missing = cls.REQUIRED - set(reader.fieldnames or ())
-            if missing:
-                raise HistoricalCSVError(f"missing columns: {sorted(missing)}")
-            for line, row in enumerate(reader, 2):
+            first_line = handle.readline()
+            if not first_line:
+                raise HistoricalCSVError("empty historical data file")
+            delimiter = "\t" if first_line.count("\t") > first_line.count(",") else ","
+            first_fields = next(csv.reader([first_line], delimiter=delimiter))
+            normalized = [field.strip().lower() for field in first_fields]
+            has_header = bool(normalized) and (
+                normalized[0] in cls.TIMESTAMP_ALIASES
+                or cls.REQUIRED_OHLC.issubset(set(normalized))
+            )
+            handle.seek(0)
+            if has_header:
+                reader = csv.DictReader(handle, delimiter=delimiter)
+                header_map = {
+                    (name or "").strip().lower(): name
+                    for name in (reader.fieldnames or [])
+                }
+                timestamp_name = next(
+                    (header_map[name] for name in cls.TIMESTAMP_ALIASES if name in header_map),
+                    None,
+                )
+                if timestamp_name is None:
+                    raise HistoricalCSVError("header must include a timestamp column")
+                missing = cls.REQUIRED_OHLC - set(header_map)
+                if missing:
+                    raise HistoricalCSVError(f"missing OHLC columns: {sorted(missing)}")
+                open_name = header_map.get("timestamp_open", timestamp_name)
+                close_name = header_map.get("timestamp_close")
+                rows = (
+                    (line, {
+                        "timestamp_open": row.get(open_name),
+                        "timestamp_close": row.get(close_name) if close_name else None,
+                        "open": row.get(header_map["open"]),
+                        "high": row.get(header_map["high"]),
+                        "low": row.get(header_map["low"]),
+                        "close": row.get(header_map["close"]),
+                        "volume": row.get(header_map["volume"]) if "volume" in header_map else None,
+                        "symbol": row.get(header_map["symbol"]) if "symbol" in header_map else None,
+                        "timeframe": row.get(header_map["timeframe"]) if "timeframe" in header_map else None,
+                    })
+                    for line, row in enumerate(reader, 2)
+                )
+            else:
+                reader = csv.reader(handle, delimiter=delimiter)
+                rows = (
+                    (line, {
+                        "timestamp_open": fields[0] if len(fields) > 0 else None,
+                        "timestamp_close": None,
+                        "open": fields[1] if len(fields) > 1 else None,
+                        "high": fields[2] if len(fields) > 2 else None,
+                        "low": fields[3] if len(fields) > 3 else None,
+                        "close": fields[4] if len(fields) > 4 else None,
+                        "volume": fields[5] if len(fields) > 5 else None,
+                        "symbol": None,
+                        "timeframe": None,
+                    })
+                    for line, fields in enumerate(reader, 1)
+                )
+
+            for line, row in rows:
                 try:
                     row_symbol = (row.get("symbol") or symbol).strip().upper()
                     row_timeframe = (row.get("timeframe") or timeframe.value).strip().upper()
                     if row_symbol != symbol.upper() or row_timeframe != timeframe.value:
                         raise HistoricalCSVError(f"line {line}: symbol/timeframe mismatch")
-                    opened = _utc(row["timestamp_open"])
-                    closed = _utc(row["timestamp_close"])
-                    numbers = {key: Decimal(row[key].strip()) for key in ("open", "high", "low", "close")}
+
+                    opened = _parse_timestamp(row["timestamp_open"], timestamp_timezone)
+                    close_value = row.get("timestamp_close")
+                    closed = (
+                        _parse_timestamp(close_value, timestamp_timezone)
+                        if close_value and close_value.strip()
+                        else opened + duration
+                    )
+                    if closed - opened != duration:
+                        raise HistoricalCSVError(
+                            f"line {line}: candle duration does not match {timeframe.value}"
+                        )
+
+                    numbers = {
+                        name: Decimal((row[name] or "").strip())
+                        for name in ("open", "high", "low", "close")
+                    }
+                    if any(not value.is_finite() for value in numbers.values()):
+                        raise HistoricalCSVError(f"line {line}: OHLC values must be finite")
                     volume_text = (row.get("volume") or "").strip()
                     volume = Decimal(volume_text) if volume_text else None
+                    if volume is not None and (not volume.is_finite() or volume < 0):
+                        raise HistoricalCSVError(f"line {line}: volume must be finite and non-negative")
+
                     candle = MarketCandle(
-                        symbol=symbol.upper(), timeframe=timeframe,
-                        timestamp_open=opened, timestamp_close=closed,
-                        open=numbers["open"], high=numbers["high"], low=numbers["low"],
-                        close=numbers["close"], volume=volume, source=source,
+                        symbol=symbol.upper(),
+                        timeframe=timeframe,
+                        timestamp_open=opened,
+                        timestamp_close=closed,
+                        open=numbers["open"],
+                        high=numbers["high"],
+                        low=numbers["low"],
+                        close=numbers["close"],
+                        volume=volume,
+                        source=source,
                     )
                 except HistoricalCSVError:
                     raise
-                except (KeyError, ValueError, InvalidOperation) as exc:
+                except (KeyError, TypeError, AttributeError, ValueError, InvalidOperation) as exc:
                     raise HistoricalCSVError(f"line {line}: invalid candle: {exc}") from exc
+
                 if candle.timestamp_open in seen:
                     raise HistoricalCSVError(f"line {line}: duplicate candle open timestamp")
+                if previous_open is not None and candle.timestamp_open < previous_open:
+                    raise HistoricalCSVError(f"line {line}: input candles are not chronological")
                 seen.add(candle.timestamp_open)
-                if start <= candle.timestamp_close <= end:
+                previous_open = candle.timestamp_open
+                if (start is None or start <= candle.timestamp_close) and candle.timestamp_close <= end:
                     output.append(candle)
-        output.sort(key=lambda c: (c.timestamp_close, c.timestamp_open))
+
         if not output:
             raise HistoricalCSVError("no candles in the requested interval")
         return tuple(output)
@@ -150,8 +259,20 @@ class RealReplayPipeline:
                      else Direction.SELL if structure.regime.value == "DOWNTREND" else None)
         if direction is None:
             return ()
-        selected = self.selector.select(key_levels=levels, structure=structure, direction=direction)
+        selected = self.selector.select(
+            GoverningKeyLevelRequest(
+                structure=structure,
+                direction=direction,
+                key_levels=levels,
+            )
+        )
         if selected.selected_key_level is None:
+            self.trace.append({
+                "cutoff": cutoff,
+                "structure": structure,
+                "governing_key_level": selected,
+                "reason": "GOVERNING_KEY_LEVEL_NOT_SELECTED",
+            })
             return ()
         confirmations = tuple(self.confirmation.evaluate(
             candles=tuple((*h1, *m15)), structure=structure,
@@ -267,10 +388,14 @@ def compose_backtest_engine(*, qualification: ReplayQualificationInputs) -> tupl
     return engine, pipeline
 
 
-def _utc(value: str) -> datetime:
+def _parse_timestamp(value: str, timestamp_timezone: tzinfo | None) -> datetime:
     result = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
     if result.tzinfo is None:
-        raise ValueError("timestamp must include a timezone")
+        if timestamp_timezone is None:
+            raise HistoricalCSVError(
+                "timestamp has no timezone; pass timestamp_timezone explicitly"
+            )
+        result = result.replace(tzinfo=timestamp_timezone)
     return result.astimezone(timezone.utc)
 
 
@@ -285,6 +410,7 @@ def run_historical_csv_replay(
     initial_account_equity: Decimal,
     qualification: ReplayQualificationInputs,
     backtest_id: str,
+    timestamp_timezone: tzinfo | None = None,
 ) -> tuple[BacktestResult, RealReplayPipeline]:
     """Load explicit H1/M15 CSVs and run the composed real-component replay.
 
@@ -292,11 +418,25 @@ def run_historical_csv_replay(
     assumptions. No network data, default valuation, or live clock is used.
     """
     h1 = HistoricalCSVAdapter.load(
-        path=h1_csv, symbol=symbol, timeframe=Timeframe.H1, start=start, end=end
+        path=h1_csv, symbol=symbol, timeframe=Timeframe.H1, start=None, end=end,
+        timestamp_timezone=timestamp_timezone
     )
     m15 = HistoricalCSVAdapter.load(
-        path=m15_csv, symbol=symbol, timeframe=Timeframe.M15, start=start, end=end
+        path=m15_csv, symbol=symbol, timeframe=Timeframe.M15, start=None, end=end,
+        timestamp_timezone=timestamp_timezone
     )
+    if not any(start <= candle.timestamp_close <= end for candle in h1):
+        raise HistoricalCSVError("H1 data does not overlap the requested replay window")
+    if not any(start <= candle.timestamp_close <= end for candle in m15):
+        raise HistoricalCSVError("M15 data does not overlap the requested replay window")
+    first_common = max(h1[0].timestamp_close, m15[0].timestamp_close)
+    last_common = min(h1[-1].timestamp_close, m15[-1].timestamp_close)
+    if start < first_common or end > last_common:
+        raise HistoricalCSVError(
+            "replay window must be within the shared H1/M15 coverage "
+            f"({first_common.isoformat()} to {last_common.isoformat()})"
+        )
+
     source_hashes = sorted({c.source.rsplit(":", 1)[-1] for c in (*h1, *m15)})
     config = BacktestConfig(
         backtest_id=backtest_id,

@@ -149,3 +149,12 @@ def test_klt17_independent_prior_high_low_is_not_a_key_level_source():
     assert len(levels) == 1
     assert levels[0].source_types == (KeyLevelSource.RANGE_BOUNDARY,)
     assert all("PRIOR_" not in ref for ref in levels[0].evidence_refs)
+
+
+def test_klt18_validated_low_swing_uses_low_to_body_boundary_zone():
+    c = candle(3, "1.1000", "1.1050", "1.0900", "1.0950")
+    swing = SwingPoint(c.timestamp_open, Decimal("1.0900"), SwingKind.LOW)
+    levels = KeyLevelDetectionEngine().detect(candles=(c,), structure=state(lows=(swing,)))
+    assert levels[0].source_zones == (
+        (KeyLevelSource.VALIDATED_SWING, PriceZone(Decimal("1.0900"), Decimal("1.0950"))),
+    )

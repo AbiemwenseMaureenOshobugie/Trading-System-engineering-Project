@@ -61,7 +61,7 @@ class KeyLevelDetectionEngine(KeyLevelEnginePort):
                 zone = PriceZone(max(candle.open, candle.close), candle.high)
                 role = "RESISTANCE"
             else:
-                zone = PriceZone(min(candle.open, candle.close), candle.low)
+                zone = PriceZone(candle.low, min(candle.open, candle.close))
                 role = "SUPPORT"
             evidence.append(
                 _SourceEvidence(

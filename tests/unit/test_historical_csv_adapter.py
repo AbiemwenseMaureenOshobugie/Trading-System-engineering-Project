@@ -34,7 +34,7 @@ def test_rejects_duplicate_candle_timestamp(tmp_path: Path):
 def test_rejects_missing_columns(tmp_path: Path):
     path = tmp_path / "bad.csv"
     path.write_text("timestamp_open,open,high,low,close\n", encoding="utf-8")
-    with pytest.raises(HistoricalCSVError, match="missing columns"):
+    with pytest.raises(HistoricalCSVError, match="missing OHLC columns"):
         HistoricalCSVAdapter.load(
             path=path, symbol="EURUSD", timeframe=Timeframe.H1,
             start=datetime(2026, 1, 1, tzinfo=UTC), end=datetime(2026, 1, 2, tzinfo=UTC),
@@ -77,3 +77,51 @@ def test_bounded_csv_replay_runs_real_pipeline_without_future_data(tmp_path: Pat
     assert result.historical_data_source == "local_csv"
     assert result.future_data_violations == ()
     assert pipeline.trace is not None
+
+
+def test_loads_headerless_tab_separated_data_with_explicit_timezone(tmp_path: Path):
+    path = tmp_path / "EURUSD60.csv"
+    path.write_text(
+        "2026-01-01 00:00:00\\t1.1000\\t1.1020\\t1.0990\\t1.1010\\t100\\n"
+        "2026-01-01 01:00:00\\t1.1010\\t1.1030\\t1.1000\\t1.1020\\t120\\n",
+        encoding="utf-8",
+    )
+    candles = HistoricalCSVAdapter.load(
+        path=path, symbol="EURUSD", timeframe=Timeframe.H1,
+        start=datetime(2026, 1, 1, tzinfo=UTC),
+        end=datetime(2026, 1, 2, tzinfo=UTC),
+        timestamp_timezone=UTC,
+    )
+    assert len(candles) == 2
+    assert candles[0].timestamp_close == datetime(2026, 1, 1, 1, tzinfo=UTC)
+    assert candles[1].volume == 120
+
+
+def test_loads_etc_utc_export_header_and_derives_m15_close(tmp_path: Path):
+    path = tmp_path / "EURUSD15.csv"
+    path.write_text(
+        "Etc/UTC,Open,High,Low,Close,Volume\\n"
+        "2026-01-01 00:00:00,1.1000,1.1020,1.0990,1.1010,100\\n",
+        encoding="utf-8",
+    )
+    candles = HistoricalCSVAdapter.load(
+        path=path, symbol="EURUSD", timeframe=Timeframe.M15,
+        start=datetime(2026, 1, 1, tzinfo=UTC),
+        end=datetime(2026, 1, 2, tzinfo=UTC),
+        timestamp_timezone=UTC,
+    )
+    assert candles[0].timestamp_close == datetime(2026, 1, 1, 0, 15, tzinfo=UTC)
+
+
+def test_rejects_naive_timestamps_without_explicit_timezone(tmp_path: Path):
+    path = tmp_path / "EURUSD15.csv"
+    path.write_text(
+        "2026-01-01 00:00:00\\t1.1000\\t1.1020\\t1.0990\\t1.1010\\t100\\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(HistoricalCSVError, match="timestamp has no timezone"):
+        HistoricalCSVAdapter.load(
+            path=path, symbol="EURUSD", timeframe=Timeframe.M15,
+            start=datetime(2026, 1, 1, tzinfo=UTC),
+            end=datetime(2026, 1, 2, tzinfo=UTC),
+        )
