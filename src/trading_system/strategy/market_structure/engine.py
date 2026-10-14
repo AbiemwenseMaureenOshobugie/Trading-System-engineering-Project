@@ -169,27 +169,76 @@ class H1MarketStructureEngine(H1MarketStructurePort):
     def _meaningful_swings(
         confirmed: Sequence[_Confirmed], events: list[str]
     ) -> list[_Confirmed]:
-        """Apply Phase 1 references, then active-chain structural participation."""
+        """Retain Phase 1 anchors and only swings that extend the active chain.
+
+        Confirmation alone is insufficient. After the first HIGH and LOW anchors,
+        a new swing is eligible only when its same-kind relationship extends one
+        direction and the most recent meaningful opposite swing supports that
+        same direction. Non-eligible swings remain confirmed historical evidence
+        and are deliberately excluded from classification inputs.
+        """
         meaningful: list[_Confirmed] = []
         first_high = False
         first_low = False
-        for item in sorted(confirmed, key=lambda x: x.swing.timestamp):
+        for item in sorted(confirmed, key=lambda x: (x.confirmed_at, x.swing.timestamp)):
+            same_kind = [
+                prior for prior in meaningful if prior.swing.kind is item.swing.kind
+            ]
+            opposite_kind = [
+                prior for prior in meaningful if prior.swing.kind is not item.swing.kind
+            ]
+
+            if item.swing.kind is SwingKind.HIGH and not first_high:
+                first_high = True
+                meaningful.append(item)
+                events.append(f"SWING_MEANINGFUL_PHASE1:{item.swing.timestamp.isoformat()}")
+                continue
+            if item.swing.kind is SwingKind.LOW and not first_low:
+                first_low = True
+                meaningful.append(item)
+                events.append(f"SWING_MEANINGFUL_PHASE1:{item.swing.timestamp.isoformat()}")
+                continue
+
+            if not same_kind or not opposite_kind:
+                events.append(f"SWING_CONFIRMED_NOT_MEANINGFUL:{item.swing.timestamp.isoformat()}")
+                continue
+
+            prior_same = same_kind[-1]
+            prior_opposite = opposite_kind[-1]
+            if item.confirmed_at <= prior_opposite.confirmed_at:
+                events.append(f"SWING_CONFIRMED_NOT_MEANINGFUL:{item.swing.timestamp.isoformat()}")
+                continue
+
             if item.swing.kind is SwingKind.HIGH:
-                if not first_high:
-                    first_high = True
-                    meaningful.append(item)
-                    events.append(f"SWING_MEANINGFUL_PHASE1:{item.swing.timestamp.isoformat()}")
-                else:
-                    meaningful.append(item)
-                    events.append(f"SWING_MEANINGFUL:{item.swing.timestamp.isoformat()}")
+                relation = (
+                    "EQ_HIGH" if H1MarketStructureEngine._overlap(item.zone, prior_same.zone)
+                    else "HH" if item.swing.price > prior_same.swing.price
+                    else "LH"
+                )
+                opposite_relation = (
+                    "EQ_LOW" if H1MarketStructureEngine._overlap(prior_opposite.zone, same_kind[-1].zone)
+                    else "HL" if prior_opposite.swing.price > same_kind[-1].swing.price
+                    else "LL"
+                )
             else:
-                if not first_low:
-                    first_low = True
-                    meaningful.append(item)
-                    events.append(f"SWING_MEANINGFUL_PHASE1:{item.swing.timestamp.isoformat()}")
-                else:
-                    meaningful.append(item)
-                    events.append(f"SWING_MEANINGFUL:{item.swing.timestamp.isoformat()}")
+                relation = (
+                    "EQ_LOW" if H1MarketStructureEngine._overlap(item.zone, prior_same.zone)
+                    else "HL" if item.swing.price > prior_same.swing.price
+                    else "LL"
+                )
+                opposite_relation = (
+                    "EQ_HIGH" if H1MarketStructureEngine._overlap(prior_opposite.zone, same_kind[-1].zone)
+                    else "HH" if prior_opposite.swing.price > same_kind[-1].swing.price
+                    else "LH"
+                )
+
+            extends_up = (relation, opposite_relation) in {("HH", "HL"), ("HL", "HH")}
+            extends_down = (relation, opposite_relation) in {("LH", "LL"), ("LL", "LH")}
+            if extends_up or extends_down:
+                meaningful.append(item)
+                events.append(f"SWING_MEANINGFUL:{item.swing.timestamp.isoformat()}")
+            else:
+                events.append(f"SWING_CONFIRMED_NOT_MEANINGFUL:{item.swing.timestamp.isoformat()}")
         return meaningful
 
     @staticmethod
