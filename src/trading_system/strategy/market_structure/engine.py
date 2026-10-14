@@ -34,8 +34,8 @@ class _Candidate:
     @property
     def zone(self) -> PriceZone:
         if self.kind is SwingKind.HIGH:
-            return PriceZone(self.candle.high, max(self.candle.open, self.candle.close))
-        return PriceZone(min(self.candle.open, self.candle.close), self.candle.low)
+            return PriceZone(max(self.candle.open, self.candle.close), self.candle.high)
+        return PriceZone(self.candle.low, min(self.candle.open, self.candle.close))
 
     @property
     def swing(self) -> SwingPoint:

@@ -1,0 +1,136 @@
+"""Actual committed EURUSD history: one-hour replay plumbing validation.
+
+This is a deterministic integration smoke test, not a performance backtest.
+The committed files contain six fields (timestamp, OHLC, volume) and no spread
+field, so zero costs are used only to exercise the full pipeline; the result
+must not be interpreted as realistic profitability or execution performance.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+from datetime import datetime, timezone
+from decimal import Decimal
+from pathlib import Path
+
+from trading_system.backtest.local import (
+    HistoricalCSVAdapter,
+    ReplayQualificationInputs,
+    run_historical_csv_replay,
+)
+from trading_system.domain import Timeframe
+from trading_system.strategy.market_structure import H1MarketStructureEngine
+
+UTC = timezone.utc
+DATA = Path(__file__).resolve().parents[1] / "data" / "replay" / "eurusd"
+
+
+def _metadata(path: Path) -> dict[str, object]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    return {
+        "path": str(path.relative_to(DATA.parents[1])),
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "rows": len(lines),
+        "first_row": lines[0],
+        "last_row": lines[-1],
+        "field_counts": sorted({len(line.split("\t")) for line in lines}),
+    }
+
+
+def test_committed_eurusd_files_replay_on_real_utc_data() -> None:
+    h1_path = DATA / "EURUSD60.csv"
+    m15_path = DATA / "EURUSD15.csv"
+    assert h1_path.is_file()
+    assert m15_path.is_file()
+
+    # Restrict evaluated cutoffs to the final shared UTC hour while preserving
+    # all earlier candles as H1/M15 structural warm-up history.
+    start = datetime(2026, 10, 9, 20, 0, tzinfo=UTC)
+    end = datetime(2026, 10, 9, 21, 0, tzinfo=UTC)
+
+    qualification = ReplayQualificationInputs(
+        value_per_price_unit={"EURUSD": Decimal("1")},
+        spread=Decimal("0"),
+        slippage=Decimal("0"),
+        noise=Decimal("0"),
+        volatility_adjustment=Decimal("0"),
+    )
+    result, pipeline = run_historical_csv_replay(
+        symbol="EURUSD",
+        h1_csv=h1_path,
+        m15_csv=m15_path,
+        start=start,
+        end=end,
+        initial_account_equity=Decimal("10000"),
+        qualification=qualification,
+        backtest_id="EURUSD-REAL-DATA-UTC-20261009-20Z",
+        timestamp_timezone=UTC,
+    )
+
+    # Diagnostic only: compare the H1 classification with the entire available
+    # history versus the last 21 completed H1 candles. This does not select or
+    # endorse either lookback; it measures whether replay outcome is history-sensitive.
+    h1_all = HistoricalCSVAdapter.load(
+        path=h1_path, symbol="EURUSD", timeframe=Timeframe.H1,
+        start=None, end=end, timestamp_timezone=UTC,
+    )
+    structure_engine = H1MarketStructureEngine()
+    full_history_state = structure_engine.evaluate(candles=h1_all, evaluation_cutoff=end)
+    recent_history_state = structure_engine.evaluate(
+        candles=h1_all[-21:], evaluation_cutoff=end
+    )
+
+    report = {
+        "validation_kind": "full-pipeline integration smoke test; not a performance backtest",
+        "h1_warmup_sensitivity": {
+            "full_history_candles": len(h1_all),
+            "recent_history_candles": min(21, len(h1_all)),
+            "full_history_regime": full_history_state.regime.value,
+            "recent_history_regime": recent_history_state.regime.value,
+            "full_history_meaningful_highs": len(full_history_state.meaningful_highs),
+            "full_history_meaningful_lows": len(full_history_state.meaningful_lows),
+            "recent_history_meaningful_highs": len(recent_history_state.meaningful_highs),
+            "recent_history_meaningful_lows": len(recent_history_state.meaningful_lows),
+            "full_history_latest_events": list(full_history_state.structural_events[-10:]),
+            "recent_history_latest_events": list(recent_history_state.structural_events[-10:]),
+        },
+        "timezone": "UTC (user-confirmed export timezone)",
+        "transaction_costs": "zero diagnostic assumptions; source files contain no spread column",
+        "window_utc": {"start": start.isoformat(), "end": end.isoformat()},
+        "inputs": [_metadata(h1_path), _metadata(m15_path)],
+        "replay": {
+            "backtest_id": result.backtest_id,
+            "historical_data_version": result.historical_data_version,
+            "strategy_candidates": result.strategy_candidates,
+            "valid_decisions": result.valid_decisions,
+            "wait_decisions": result.wait_decisions,
+            "risk_rejections": result.risk_rejections,
+            "governance_blocks": result.governance_blocks,
+            "executed_entries": result.executed_entries,
+            "completed_trades": result.completed_trade_count,
+            "future_data_violations": list(result.future_data_violations),
+            "ordering_violations": list(result.ordering_violations),
+            "ambiguous_executions": result.ambiguous_executions,
+            "pipeline_trace_records": len(pipeline.trace),
+            "trace_reason_counts": {
+                reason: sum(1 for item in pipeline.trace if item.get("reason") == reason)
+                for reason in sorted({item.get("reason", "UNSPECIFIED") for item in pipeline.trace})
+            },
+            "trace_last_record": {
+                "cutoff": pipeline.trace[-1]["cutoff"].isoformat(),
+                "reason": pipeline.trace[-1].get("reason"),
+                "structure_regime": pipeline.trace[-1].get("structure_regime"),
+                "confirmation_count": pipeline.trace[-1].get("confirmation_count"),
+                "candidate_count": pipeline.trace[-1].get("candidate_count"),
+                "structural_events": list(pipeline.trace[-1].get("structural_events", ())),
+            } if pipeline.trace else None,
+        },
+    }
+    print("ASTER_REAL_DATA_REPLAY_REPORT=" + json.dumps(report, sort_keys=True))
+
+    assert result.start_timestamp == start
+    assert result.end_timestamp == end
+    assert result.historical_data_source == "local_csv"
+    assert len(result.historical_data_version) == 64
+    assert result.future_data_violations == ()
+    assert result.ordering_violations == ()

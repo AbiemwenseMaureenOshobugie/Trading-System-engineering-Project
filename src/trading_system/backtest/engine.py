@@ -59,7 +59,12 @@ class BacktestEngine:
         candles: Sequence,
     ) -> BacktestResult:
         ordered = self._validate_history(config, candles)
-        cutoffs = tuple(sorted({c.timestamp_close for c in ordered}))
+        # Warm-up history before start remains visible to establish structure,
+        # but only candles inside the requested window create replay cutoffs.
+        cutoffs = tuple(sorted({
+            c.timestamp_close for c in ordered
+            if config.start_timestamp <= c.timestamp_close <= config.end_timestamp
+        }))
 
         active: dict[str, _ActivePosition] = {}
         entries: list[ExecutionRecord] = []
@@ -260,7 +265,7 @@ class BacktestEngine:
                 raise ValueError("historical candles must be chronological")
         return tuple(
             candle for candle in ordered
-            if config.start_timestamp <= candle.timestamp_close <= config.end_timestamp
+            if candle.timestamp_close <= config.end_timestamp
             and candle.symbol in config.symbol_universe
         )
 
