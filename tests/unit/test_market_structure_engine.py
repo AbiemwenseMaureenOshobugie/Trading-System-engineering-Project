@@ -191,14 +191,14 @@ def test_confirmed_swing_not_extending_active_chain_is_not_meaningful() -> None:
 
 def test_uptrend_reaches_uptrend_regime_on_clean_hh_hl_staircase() -> None:
     confirmed_swings = [
-        confirmed(1, SwingKind.HIGH, "1.1000"),
-        confirmed(2, SwingKind.LOW, "1.0800"),
-        confirmed(3, SwingKind.HIGH, "1.1100"),
-        confirmed(4, SwingKind.LOW, "1.0900"),
-        confirmed(5, SwingKind.HIGH, "1.1200"),
-        confirmed(6, SwingKind.LOW, "1.1000"),
-        confirmed(7, SwingKind.HIGH, "1.1300"),
-        confirmed(8, SwingKind.LOW, "1.1100"),
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW, "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),
+        confirmed(4, SwingKind.LOW, "1.0700"),
+        confirmed(5, SwingKind.HIGH, "1.1000"),
+        confirmed(6, SwingKind.LOW, "1.0800"),
+        confirmed(7, SwingKind.HIGH, "1.1100"),
+        confirmed(8, SwingKind.LOW, "1.0900"),
     ]
     events: list[str] = []
     engine = H1MarketStructureEngine()
@@ -216,14 +216,14 @@ def test_uptrend_reaches_uptrend_regime_on_clean_hh_hl_staircase() -> None:
 
 def test_downtrend_reaches_downtrend_regime_on_clean_lh_ll_staircase() -> None:
     confirmed_swings = [
-        confirmed(1, SwingKind.HIGH, "1.1200"),
-        confirmed(2, SwingKind.LOW, "1.1000"),
-        confirmed(3, SwingKind.HIGH, "1.1100"),
-        confirmed(4, SwingKind.LOW, "1.0900"),
-        confirmed(5, SwingKind.HIGH, "1.1000"),
-        confirmed(6, SwingKind.LOW, "1.0800"),
-        confirmed(7, SwingKind.HIGH, "1.0900"),
-        confirmed(8, SwingKind.LOW, "1.0700"),
+        confirmed(1, SwingKind.HIGH, "1.1000"),
+        confirmed(2, SwingKind.LOW, "1.0800"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),
+        confirmed(4, SwingKind.LOW, "1.0700"),
+        confirmed(5, SwingKind.HIGH, "1.0800"),
+        confirmed(6, SwingKind.LOW, "1.0600"),
+        confirmed(7, SwingKind.HIGH, "1.0700"),
+        confirmed(8, SwingKind.LOW, "1.0500"),
     ]
     events: list[str] = []
     engine = H1MarketStructureEngine()
