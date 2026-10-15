@@ -164,3 +164,76 @@ def test_candidate_zones_use_ordered_body_to_extreme_boundaries() -> None:
     low = _Candidate(21, SwingKind.LOW, low_candle)
     assert high.zone == PriceZone(Decimal("1.1050"), Decimal("1.1100"))
     assert low.zone == PriceZone(Decimal("1.0900"), Decimal("1.0950"))
+
+
+def test_confirmed_swing_not_extending_active_chain_is_not_meaningful() -> None:
+    confirmed_swings = [
+        confirmed(1, SwingKind.HIGH, "1.1000"),
+        confirmed(2, SwingKind.LOW, "1.0800"),
+        confirmed(3, SwingKind.HIGH, "1.1100"),
+        confirmed(4, SwingKind.LOW, "1.0900"),
+        confirmed(5, SwingKind.HIGH, "1.1200"),
+        confirmed(6, SwingKind.LOW, "1.1000"),
+        confirmed(7, SwingKind.HIGH, "1.1150"),
+    ]
+    events: list[str] = []
+
+    meaningful = H1MarketStructureEngine._meaningful_swings(confirmed_swings, events)
+
+    assert [item.swing for item in meaningful] == [
+        item.swing for item in confirmed_swings[:-1]
+    ]
+    assert any(
+        event == f"SWING_CONFIRMED_NOT_MEANINGFUL:{confirmed_swings[-1].swing.timestamp.isoformat()}"
+        for event in events
+    )
+
+
+def test_uptrend_reaches_uptrend_regime_on_clean_hh_hl_staircase() -> None:
+    confirmed_swings = [
+        confirmed(1, SwingKind.HIGH, "1.1000"),
+        confirmed(2, SwingKind.LOW, "1.0800"),
+        confirmed(3, SwingKind.HIGH, "1.1100"),
+        confirmed(4, SwingKind.LOW, "1.0900"),
+        confirmed(5, SwingKind.HIGH, "1.1200"),
+        confirmed(6, SwingKind.LOW, "1.1000"),
+        confirmed(7, SwingKind.HIGH, "1.1300"),
+        confirmed(8, SwingKind.LOW, "1.1100"),
+    ]
+    events: list[str] = []
+    engine = H1MarketStructureEngine()
+    meaningful = engine._meaningful_swings(confirmed_swings, events)
+    labels = engine._relationship_labels(meaningful)
+
+    regime, controlling, _, _ = engine._classify((), meaningful, labels, events)
+
+    assert regime is Regime.UPTREND
+    assert sum(label == "HH" for label in labels.values()) >= 2
+    assert sum(label == "HL" for label in labels.values()) >= 2
+    assert controlling is not None
+    assert controlling.kind is SwingKind.LOW
+
+
+def test_downtrend_reaches_downtrend_regime_on_clean_lh_ll_staircase() -> None:
+    confirmed_swings = [
+        confirmed(1, SwingKind.HIGH, "1.1200"),
+        confirmed(2, SwingKind.LOW, "1.1000"),
+        confirmed(3, SwingKind.HIGH, "1.1100"),
+        confirmed(4, SwingKind.LOW, "1.0900"),
+        confirmed(5, SwingKind.HIGH, "1.1000"),
+        confirmed(6, SwingKind.LOW, "1.0800"),
+        confirmed(7, SwingKind.HIGH, "1.0900"),
+        confirmed(8, SwingKind.LOW, "1.0700"),
+    ]
+    events: list[str] = []
+    engine = H1MarketStructureEngine()
+    meaningful = engine._meaningful_swings(confirmed_swings, events)
+    labels = engine._relationship_labels(meaningful)
+
+    regime, controlling, _, _ = engine._classify((), meaningful, labels, events)
+
+    assert regime is Regime.DOWNTREND
+    assert sum(label == "LH" for label in labels.values()) >= 2
+    assert sum(label == "LL" for label in labels.values()) >= 2
+    assert controlling is not None
+    assert controlling.kind is SwingKind.HIGH

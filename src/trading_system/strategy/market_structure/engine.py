@@ -169,27 +169,83 @@ class H1MarketStructureEngine(H1MarketStructurePort):
     def _meaningful_swings(
         confirmed: Sequence[_Confirmed], events: list[str]
     ) -> list[_Confirmed]:
-        """Apply Phase 1 references, then active-chain structural participation."""
+        """Retain Phase 1 anchors, then admit only directionally coherent swings.
+
+        Same-kind relationships are compared only with the prior meaningful
+        swing of that kind. The supporting relationship is independently
+        derived from the two most recent meaningful swings of the opposite
+        kind. The first directional extension is retained as a Phase 1 bridge
+        when the opposite-kind relationship is not yet available; a coherent
+        HH/HL or LH/LL pair is required before an active direction is set.
+        """
         meaningful: list[_Confirmed] = []
         first_high = False
         first_low = False
-        for item in sorted(confirmed, key=lambda x: x.swing.timestamp):
-            if item.swing.kind is SwingKind.HIGH:
-                if not first_high:
-                    first_high = True
-                    meaningful.append(item)
-                    events.append(f"SWING_MEANINGFUL_PHASE1:{item.swing.timestamp.isoformat()}")
-                else:
-                    meaningful.append(item)
-                    events.append(f"SWING_MEANINGFUL:{item.swing.timestamp.isoformat()}")
+        active_direction: str | None = None
+
+        def relation(current: _Confirmed, previous: _Confirmed) -> str:
+            if current.swing.kind is SwingKind.HIGH:
+                if H1MarketStructureEngine._overlap(current.zone, previous.zone):
+                    return "EQ_HIGH"
+                return "HH" if current.swing.price > previous.swing.price else "LH"
+            if H1MarketStructureEngine._overlap(current.zone, previous.zone):
+                return "EQ_LOW"
+            return "HL" if current.swing.price > previous.swing.price else "LL"
+
+        for item in sorted(confirmed, key=lambda x: (x.confirmed_at, x.swing.timestamp)):
+            if item.swing.kind is SwingKind.HIGH and not first_high:
+                first_high = True
+                meaningful.append(item)
+                events.append(f"SWING_MEANINGFUL_PHASE1:{item.swing.timestamp.isoformat()}")
+                continue
+            if item.swing.kind is SwingKind.LOW and not first_low:
+                first_low = True
+                meaningful.append(item)
+                events.append(f"SWING_MEANINGFUL_PHASE1:{item.swing.timestamp.isoformat()}")
+                continue
+
+            same_kind = [prior for prior in meaningful if prior.swing.kind is item.swing.kind]
+            opposite_kind = [prior for prior in meaningful if prior.swing.kind is not item.swing.kind]
+            if not same_kind or not opposite_kind:
+                events.append(f"SWING_CONFIRMED_NOT_MEANINGFUL:{item.swing.timestamp.isoformat()}")
+                continue
+
+            current_relation = relation(item, same_kind[-1])
+            opposite_relation = (
+                relation(opposite_kind[-1], opposite_kind[-2])
+                if len(opposite_kind) >= 2
+                else None
+            )
+
+            extends_up = opposite_relation is not None and (
+                (current_relation == "HH" and opposite_relation == "HL")
+                or (current_relation == "HL" and opposite_relation == "HH")
+            )
+            extends_down = opposite_relation is not None and (
+                (current_relation == "LH" and opposite_relation == "LL")
+                or (current_relation == "LL" and opposite_relation == "LH")
+            )
+
+            if extends_up and active_direction in (None, "UP"):
+                meaningful.append(item)
+                active_direction = "UP"
+                events.append(f"SWING_MEANINGFUL:{item.swing.timestamp.isoformat()}")
+            elif extends_down and active_direction in (None, "DOWN"):
+                meaningful.append(item)
+                active_direction = "DOWN"
+                events.append(f"SWING_MEANINGFUL:{item.swing.timestamp.isoformat()}")
+            elif (
+                active_direction is None
+                and opposite_relation is None
+                and current_relation in {"HH", "HL", "LH", "LL"}
+            ):
+                # Phase 1 bridge: retain the first directional extension so
+                # the next opposite-kind swing can establish a coherent pair.
+                meaningful.append(item)
+                events.append(f"SWING_MEANINGFUL_PHASE1:{item.swing.timestamp.isoformat()}")
             else:
-                if not first_low:
-                    first_low = True
-                    meaningful.append(item)
-                    events.append(f"SWING_MEANINGFUL_PHASE1:{item.swing.timestamp.isoformat()}")
-                else:
-                    meaningful.append(item)
-                    events.append(f"SWING_MEANINGFUL:{item.swing.timestamp.isoformat()}")
+                events.append(f"SWING_CONFIRMED_NOT_MEANINGFUL:{item.swing.timestamp.isoformat()}")
+
         return meaningful
 
     @staticmethod
