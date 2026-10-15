@@ -42,33 +42,62 @@ Reactions may provide evidence but never modify these zone boundaries.
 
 ## 5. Meaningfulness and active chain
 
-Meaningfulness is a structural-chain property. A confirmed swing becomes meaningful when its structural relationship makes it part of the active structural chain. There is no separate reaction/event state machine and no undocumented pip, ATR, candle-count, or discretionary threshold.
+Meaningfulness is a structural-chain property. Confirmation establishes that a swing is structurally confirmed; it does not establish that the swing is meaningful.
+
+A confirmed swing becomes meaningful only when it is accepted into the active structural chain under the deterministic procedure defined in this section. There is no separate reaction/event state machine and no undocumented pip, ATR, candle-count, or discretionary threshold.
 
 The active chain is a hybrid of chronology and structural relationships:
 
 - chronology preserves development order;
 - structural relationships determine current active participation;
 - inactive historical swings remain auditable but do not classify current structure;
-- a previously excluded meaningful swing may later re-enter the active chain when later structural relationships make it relevant, while retaining its original chronology;
+- a confirmed swing excluded from the active structural chain remains excluded from that chain; it is not silently reconsidered or reinstated by later price action;
+- if later price action produces a new confirmed swing, that new swing is evaluated under the normal meaningfulness procedure;
+- an unresolved swing is distinct from an excluded swing: unresolved swings may be re-evaluated in later evaluations as additional confirmed structural evidence becomes available, but excluded swings are not re-evaluated or reinstated under this version of MS-0.1A;
 - equal meaningful swings remain in the chain, have no directional relationship, and cannot control structure;
 - only the active chain determines current classification, controlling swing, regime, and directional invalidation.
 
 Two-phase establishment applies:
 
-1. **Phase 1:** confirmed swings may serve as references while the first valid meaningful structural sequence is established.
-2. **Phase 2:** once structure is established, only the most recent meaningful opposite swing may confirm new structural progression. Confirmed-but-not-meaningful swings cannot do so.
+1. **Phase 1 — structural establishment:** confirmed swings may be retained as reference observations while the engine evaluates whether the first valid meaningful structural sequence can be established. A confirmed swing is not automatically meaningful merely because it is available as a reference.
+2. **Phase 2 — established structure:** Phase 2 begins only after the directional establishment requirements in Section 7 are satisfied. Once established, only the most recent meaningful opposite swing may confirm new structural progression. Confirmed-but-not-meaningful swings cannot do so.
+
+During Phase 1, the engine must use the same-kind reference and structural-consistency rules below. It must not introduce an additional bootstrap or bridge rule that is not defined by this specification.
+
+### Active structural sequence
+
+The active structural sequence is the chronologically ordered set of confirmed swings accepted as meaningful under Sections 5 and 6 for the current evaluation. Confirmed observations that are excluded or unresolved are not members of this sequence. Historical evaluations and their emitted evidence remain immutable; a later evaluation may produce a different active sequence only by applying the explicit re-evaluation rule for unresolved swings below.
 
 ## 6. Structural relationships
 
-Each new meaningful swing is classified by actual relationship, independent of current regime.
+Each confirmed swing is evaluated for same-kind classification before its meaningfulness is determined. Classification is based on the actual price-zone relationship, independent of current regime.
 
-- Meaningful high above relevant prior meaningful high → `HH`.
-- Meaningful high below relevant prior meaningful high → `LH`.
-- Meaningful low above relevant prior meaningful low → `HL`.
-- Meaningful low below relevant prior meaningful low → `LL`.
+### Same-kind reference selection
+
+For a candidate confirmed HIGH, the reference is the most recent previously accepted meaningful HIGH in the active structural sequence. For a candidate confirmed LOW, the reference is the most recent previously accepted meaningful LOW in the active structural sequence.
+
+- Confirmed HIGH above its same-kind reference → `HH`.
+- Confirmed HIGH below its same-kind reference → `LH`.
+- Confirmed LOW above its same-kind reference → `HL`.
+- Confirmed LOW below its same-kind reference → `LL`.
 - Overlapping swing zones are equal/neither and do not replace a controlling swing.
+- A confirmed swing excluded from the active sequence does not replace its same-kind reference.
+- A HIGH is never compared directly with a LOW to determine `HH` or `LH`; a LOW is never compared directly with a HIGH to determine `HL` or `LL`.
+- If no accepted meaningful same-kind reference exists, same-kind classification is unresolved for that evaluation; the engine must not invent a bootstrap reference.
 
 Equality is defined only by zone overlap. No numerical tolerance is added.
+
+### Conflicting structural evidence and re-evaluation
+
+Same-kind classification and active-chain participation are separate determinations. A same-kind relationship alone does not prove that a swing extends the active structural sequence.
+
+When same-kind classification and available opposite-kind structural evidence conflict, or evidence is insufficient to determine active-chain participation, the swing remains a confirmed observation but is unresolved for that evaluation. It must not extend the active chain, become controlling, or establish a directional regime while unresolved.
+
+The engine must expose the condition in `structural_events` using `SWING_CONFIRMED_UNRESOLVED` with evidence sufficient to identify the confirmed swing and the unresolved reason. The unresolved swing is not included in `meaningful_highs` or `meaningful_lows` while unresolved. It remains visible as a confirmed observation in structural evidence.
+
+On each later evaluation in which a new opposing or same-kind swing becomes confirmed, unresolved swings may be re-evaluated against the then-current active-chain references and available confirmed opposite-kind evidence. A previously unresolved swing may be admitted only if the updated evidence makes its same-kind classification and active-chain participation consistent under Sections 5–7. Otherwise it remains unresolved. This re-evaluation does not rewrite any earlier evaluation or its audit evidence. A swing explicitly excluded as non-extending is not re-evaluated or reinstated under this version.
+
+A swing is admitted to the active structural chain only when its same-kind classification and the available opposite-kind structural evidence are consistent with the active structural sequence. If the evidence conflicts or is insufficient to determine participation, the swing remains confirmed but unresolved for that evaluation.
 
 ## 7. Controlling swing and trend regimes
 
@@ -160,7 +189,7 @@ Boundary fields are explicit `Optional[PriceZone]` evidence. They are `None` unt
 6. Only a more extreme opposing candidate replaces it.
 7. Confirmation requires a completed H1 close beyond the opposing extreme.
 8. Confirmation does not imply meaningfulness.
-9. Meaningfulness follows active-chain participation.
+9. Meaningfulness requires acceptance into the active structural sequence under Sections 5 and 6.
 10. Swing zones are immutable.
 11. Equality is zone overlap.
 12. Equal swings never become controlling.
@@ -176,6 +205,10 @@ Boundary fields are explicit `Optional[PriceZone]` evidence. They are `None` unt
 22. Historical evidence remains auditable when inactive.
 23. No undocumented numerical thresholds may be introduced.
 24. Identical candles and cutoff produce identical state and structural events.
+25. Same-kind classification compares a confirmed swing only with the most recent previously accepted meaningful swing of the same kind in the active sequence.
+26. A confirmed swing excluded as non-extending does not replace its same-kind reference and is not silently reinstated.
+27. Conflicting or insufficient same-kind/opposite-kind evidence produces an observable unresolved confirmed swing; it is not admitted to the active sequence until a later evaluation resolves it under Section 6.
+28. Phase 2 begins only after the applicable directional establishment requirements in Section 7 are satisfied.
 
 ## 13. Acceptance tests
 
@@ -190,10 +223,12 @@ The implementation must cover the existing MS-0.1A lifecycle tests plus:
 
 The broader acceptance suite must also demonstrate candidate detection/replacement, opposing-swing tracking, confirmation, meaningfulness, active-chain construction, HH/HL/LH/LL/equality, controlling-swing updates, UPTREND/DOWNTREND establishment and persistence, invalidation/TRANSITION, UNCLEAR fallback, regime conflict handling, deterministic replay, and explanatory structural events.
 
+The amended contract additionally requires tests for: confirmation without meaningfulness; same-kind-only comparison; exclusion preserving the prior same-kind reference; unresolved-state visibility outside `meaningful_highs`/`meaningful_lows`; re-evaluation of unresolved swings in a later evaluation without changing prior evaluation output; and Phase 2 entry only after Section 7 directional establishment requirements are satisfied.
+
 ## 14. Non-goals
 
 MS-0.1A does not define M15 CP-1/CP-2 confirmation, CP-2 execution-aware buffers, risk percentages, session values/timezones, trade/loss counting semantics, broker execution, live authorization, or AI/ML prediction.
 
 ## 15. Implementation gate
 
-The RANGE boundary-selection ambiguity is closed. MS-0.1A is specification-complete and may proceed to implementation subject only to normal spec-to-contract-to-port-to-test consistency checks.
+The RANGE boundary-selection ambiguity is closed. This amendment clarifies meaningfulness, same-kind reference selection, one-way exclusion, and observable deferral of conflicting evidence. The unresolved-swing re-evaluation rule is explicit for later evaluations, while prior evaluations remain immutable. MS-0.1A may proceed to implementation only when the implementation and acceptance tests conform to these rules; the current implementation must be audited and reworked against this amended specification before merge.
