@@ -83,7 +83,8 @@ For a candidate confirmed HIGH, the reference is the most recent previously acce
 - Overlapping swing zones are equal/neither and do not replace a controlling swing.
 - A confirmed swing excluded from the active sequence does not replace its same-kind reference.
 - A HIGH is never compared directly with a LOW to determine `HH` or `LH`; a LOW is never compared directly with a HIGH to determine `HL` or `LL`.
-- If no accepted meaningful same-kind reference exists, same-kind classification is unresolved for that evaluation; the engine must not invent a bootstrap reference.
+- If an accepted meaningful same-kind reference exists at the swing's confirmation evaluation, the engine records both the relationship classification and the exact reference swing used. That classification and reference are immutable.
+- If no accepted meaningful same-kind reference exists, the engine records `CLASSIFICATION_UNRESOLVED`; it must not invent a bootstrap reference. At a later evaluation, the engine may establish the initial relationship classification when a valid same-kind reference becomes available. At that point, it records the reference used and freezes both the classification and reference. This establishes a previously unknown classification; it does not recalculate an established classification.
 
 Equality is defined only by zone overlap. No numerical tolerance is added.
 
@@ -95,9 +96,11 @@ When same-kind classification and available opposite-kind structural evidence co
 
 The engine must expose the condition in `structural_events` using `SWING_CONFIRMED_UNRESOLVED` with evidence sufficient to identify the confirmed swing and the unresolved reason. The unresolved swing is not included in `meaningful_highs` or `meaningful_lows` while unresolved. It remains visible as a confirmed observation in structural evidence.
 
-On each later evaluation in which a new opposing or same-kind swing becomes confirmed, unresolved swings may be re-evaluated against the then-current active-chain references and available confirmed opposite-kind evidence. A previously unresolved swing may be admitted only if the updated evidence makes its same-kind classification and active-chain participation consistent under Sections 5–7. Otherwise it remains unresolved. This re-evaluation does not rewrite any earlier evaluation or its audit evidence. A swing explicitly excluded as non-extending is not re-evaluated or reinstated under this version.
+An unresolved swing is reconsidered when a newly confirmed swing is admitted to or excluded from the active structural sequence. Each such structural-sequence change starts one reconsideration pass over unresolved swings in chronological order; each unresolved swing is reconsidered at most once during that pass. Outcomes within a pass do not recursively trigger another pass. A later newly confirmed swing's admission or exclusion may trigger the next pass.
 
-A swing is admitted to the active structural chain only when its same-kind classification and the available opposite-kind structural evidence are consistent with the active structural sequence. If the evidence conflicts or is insufficient to determine participation, the swing remains confirmed but unresolved for that evaluation.
+During reconsideration, an unresolved swing's same-kind classification may be established only if it was previously `CLASSIFICATION_UNRESOLVED` and a valid same-kind reference has become available. Once established, the classification and reference are frozen. An already established classification and its recorded reference are never recalculated. Admission is reconsidered separately using the updated confirmed structural evidence and Sections 5–7. A previously unresolved swing may be admitted only if the updated evidence makes its classification and active-chain participation consistent; otherwise it remains unresolved. Each evaluation and its emitted evidence are immutable.
+
+A swing is admitted to the active structural chain only when its same-kind classification and the available opposite-kind structural evidence are consistent with the active structural sequence. If the evidence conflicts or is insufficient to determine participation, the swing remains confirmed but unresolved for that evaluation. A swing explicitly excluded as non-extending remains excluded and is not re-evaluated or reinstated under this version.
 
 ## 7. Controlling swing and trend regimes
 
@@ -209,6 +212,9 @@ Boundary fields are explicit `Optional[PriceZone]` evidence. They are `None` unt
 26. A confirmed swing excluded as non-extending does not replace its same-kind reference and is not silently reinstated.
 27. Conflicting or insufficient same-kind/opposite-kind evidence produces an observable unresolved confirmed swing; it is not admitted to the active sequence until a later evaluation resolves it under Section 6.
 28. Phase 2 begins only after the applicable directional establishment requirements in Section 7 are satisfied.
+29. If a same-kind reference exists at confirmation, the relationship classification and exact reference swing are recorded and immutable; an initially unresolved classification may be established later when a valid same-kind reference becomes available, after which both are immutable.
+30. A newly confirmed swing's admission or exclusion triggers one reconsideration pass over unresolved swings in chronological order; each unresolved swing is reconsidered at most once per pass, and outcomes within a pass do not recursively trigger another pass.
+31. Re-evaluation never rewrites prior evaluation output; a swing explicitly excluded as non-extending is not re-evaluated or reinstated under this version.
 
 ## 13. Acceptance tests
 
@@ -223,7 +229,7 @@ The implementation must cover the existing MS-0.1A lifecycle tests plus:
 
 The broader acceptance suite must also demonstrate candidate detection/replacement, opposing-swing tracking, confirmation, meaningfulness, active-chain construction, HH/HL/LH/LL/equality, controlling-swing updates, UPTREND/DOWNTREND establishment and persistence, invalidation/TRANSITION, UNCLEAR fallback, regime conflict handling, deterministic replay, and explanatory structural events.
 
-The amended contract additionally requires tests for: confirmation without meaningfulness; same-kind-only comparison; exclusion preserving the prior same-kind reference; unresolved-state visibility outside `meaningful_highs`/`meaningful_lows`; re-evaluation of unresolved swings in a later evaluation without changing prior evaluation output; and Phase 2 entry only after Section 7 directional establishment requirements are satisfied.
+The amended contract additionally requires tests for: confirmation without meaningfulness; same-kind-only comparison; exclusion preserving the prior same-kind reference; unresolved-state visibility outside `meaningful_highs`/`meaningful_lows`; frozen classification and recorded reference when classification is established; later establishment of an initially unresolved classification when a same-kind reference becomes available; one reconsideration per unresolved swing per structural-sequence-change pass, processed chronologically without recursive re-triggering; re-evaluation without changing prior evaluation output; and Phase 2 entry only after Section 7 directional establishment requirements are satisfied.
 
 ## 14. Non-goals
 
