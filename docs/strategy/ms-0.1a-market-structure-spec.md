@@ -22,7 +22,7 @@ Candidate identification uses exactly three consecutive candles `(left, middle, 
 - If a middle candle satisfies both high and low conditions, the window is dual/ambiguous and produces neither candidate.
 - Subsequent windows continue normally after a dual candidate.
 
-An opposing swing forms when the next valid opposing candidate appears. Once an opposing swing forms, the candidate identity is immutable. Exactly one opposing swing is active. A newer opposing candidate replaces it only when it is more extreme in the relevant direction; non-replacing candidates remain historical only. A replacement resets opposing-swing tracking.
+An opposing swing forms when the next valid opposing candidate appears. Once an opposing swing forms, the candidate identity is immutable. Exactly one opposing swing is active. A newer opposing candidate replaces the active opposing swing only when it is more extreme in the relevant direction; non-replacing candidates remain historical only. When replacement occurs, rebind the pending confirmation predicate to the new opposing reference. The active candidate's identity, zone, and origin remain unchanged. Record the replacement and both the old and new opposing references in `structural_events`; retain prior candidate and event evidence as history. Replacement does not create a new active candidate or alter the active candidate's zone or origin.
 
 ## 4. Confirmation and zones
 
@@ -156,7 +156,7 @@ The alternating reaction sequence may begin from either boundary. Non-directiona
 
 ### Range breakout
 
-A range breakout is recorded as a structural event/subtype of the transition process, e.g. `RANGE_BREAKOUT_UP` or `RANGE_BREAKOUT_DOWN`. A breakout alone does not establish UPTREND or DOWNTREND. Failed penetration returning into the range does not automatically change RANGE.
+A range breakout is recorded as a structural event/subtype of the transition process, e.g. `RANGE_BREAKOUT_UP` or `RANGE_BREAKOUT_DOWN`. A breakout alone does not establish UPTREND or DOWNTREND. A boundary penetration is evaluated from a completed H1 candle that closes at or beyond the selected boundary in the breakout direction. “At or beyond” means the candle close is on or past the outer edge of the boundary zone, inclusive. The immediately following H1 candle determines whether that penetration failed or was confirmed: if that candle closes inside the selected range, the penetration is failed and the range is not invalidated; if it closes at or beyond the same selected boundary in the breakout direction, the penetration is confirmed. If no following completed H1 candle is available, the penetration remains provisional and no breakout is confirmed yet. If the following candle closes beyond the opposite range boundary, the original penetration is failed; the opposite-direction penetration is evaluated as a separate event under this same immediate-following-candle rule. This immediate-return rule governs range invalidation only. It does not alter candidate identification, opposing-swing confirmation, meaningfulness, classification, or active-chain participation under Sections 3–6.
 
 ## 10. UNCLEAR and persistence
 
