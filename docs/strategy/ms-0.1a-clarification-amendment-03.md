@@ -24,3 +24,10 @@ This immediate-return rule applies to range invalidation only. It does not affec
 ## Scope and change control
 
 This amendment resolves R13 and R65 for the agreed MS-0.1A Option 2 rework. It changes documentation only. It does not authorize implementation or test changes in this commit. The rework must still follow the agreed test-first process against the frozen canonical specification.
+
+
+## Clarification — meaning of “immediately following” (§9)
+
+“Immediately following” means the next completed candle in the evaluated sequence; gaps in market time do not affect the rule.
+
+This clarification defines sequence adjacency for the existing R65 range-penetration rule. It does not add a time-based timeout or change the rule’s other conditions. Documentation only; implementation and tests remain governed by the separate MS-0.1A rework.
