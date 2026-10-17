@@ -12,10 +12,12 @@ This is a reference rebinding, not a new active-candidate creation.
 
 ## R65 — Failed range-boundary penetration (§9)
 
-A boundary penetration is evaluated from a completed H1 candle that closes at or beyond the selected boundary in the breakout direction. The immediately following H1 candle determines the outcome:
+A boundary penetration is evaluated from a completed H1 candle that closes at or beyond the selected boundary in the breakout direction. “At or beyond” means the close is on or past the outer edge of the boundary zone, inclusive. The immediately following H1 candle determines the outcome:
 
 - If it closes inside the selected range, the penetration is failed and the range is not invalidated.
 - If it closes at or beyond the same selected boundary in the breakout direction, the penetration is confirmed.
+- If no following completed H1 candle is available, the penetration remains provisional; no breakout is confirmed yet.
+- If the following candle closes beyond the opposite range boundary, the original penetration is failed and the opposite-direction penetration is evaluated as a separate event under the same immediate-following-candle rule.
 
 This immediate-return rule applies to range invalidation only. It does not affect candidate identification, confirmation, meaningfulness, classification, or active-chain rules in Sections 3–6.
 
