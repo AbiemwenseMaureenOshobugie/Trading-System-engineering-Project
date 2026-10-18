@@ -249,7 +249,7 @@ class H1MarketStructureEngine(H1MarketStructurePort):
                 if down and not self._invalidated(eligible, down_control):
                     events.append("DOWNTREND_ESTABLISHED")
                     return Regime.DOWNTREND, down_control, upper, lower
-                return Regime.TRANSITION, up_control, upper, lower
+                return Regime.TRANSITION, None, upper, lower
             events.append("UPTREND_ESTABLISHED")
             return Regime.UPTREND, up_control, upper, lower
 
@@ -257,7 +257,7 @@ class H1MarketStructureEngine(H1MarketStructurePort):
         if down:
             if self._invalidated(eligible, down_control):
                 events.append("DOWNTREND_INVALIDATED")
-                return Regime.TRANSITION, down_control, upper, lower
+                return Regime.TRANSITION, None, upper, lower
             events.append("DOWNTREND_ESTABLISHED")
             return Regime.DOWNTREND, down_control, upper, lower
 
