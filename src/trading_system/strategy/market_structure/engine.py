@@ -366,12 +366,20 @@ class H1MarketStructureEngine(H1MarketStructurePort):
         if not reactions:
             return None
         start = max(reactions)
-        for candle in candles:
-            if candle.timestamp_close <= start:
+        later = [candle for candle in candles if candle.timestamp_close > start]
+        for index, candle in enumerate(later):
+            if candle.close >= upper.upper:
+                direction = "UP"
+            elif candle.close <= lower.lower:
+                direction = "DOWN"
+            else:
                 continue
-            if candle.close > upper.upper:
+            if index + 1 == len(later):
+                return None
+            follow_close = later[index + 1].close
+            if direction == "UP" and follow_close >= upper.upper:
                 return "UP"
-            if candle.close < lower.lower:
+            if direction == "DOWN" and follow_close <= lower.lower:
                 return "DOWN"
         return None
 
