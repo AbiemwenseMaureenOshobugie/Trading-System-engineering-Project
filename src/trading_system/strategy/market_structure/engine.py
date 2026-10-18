@@ -234,7 +234,11 @@ class H1MarketStructureEngine(H1MarketStructurePort):
             upper_reactions, lower_reactions = self._range_reactions(meaningful, upper, lower)
             if self._alternates(upper_reactions, lower_reactions):
                 events.extend(("RANGE_BOUNDARIES_SELECTED", "RANGE_ALTERNATING_REACTIONS_CONFIRMED"))
-                breakout = self._range_breakout(eligible, meaningful, upper, lower)
+                breakout = (
+                    None
+                    if self._has_established_trend(labels)
+                    else self._range_breakout(eligible, meaningful, upper, lower)
+                )
                 if breakout is not None:
                     events.append(f"RANGE_BREAKOUT_{breakout}")
                     return Regime.TRANSITION, None, upper, lower
