@@ -245,6 +245,10 @@ class H1MarketStructureEngine(H1MarketStructurePort):
         if up:
             if self._invalidated(eligible, up_control):
                 events.append("UPTREND_INVALIDATED")
+                down, down_control = self._trend_status("DOWN", meaningful, labels)
+                if down and not self._invalidated(eligible, down_control):
+                    events.append("DOWNTREND_ESTABLISHED")
+                    return Regime.DOWNTREND, down_control, upper, lower
                 return Regime.TRANSITION, up_control, upper, lower
             events.append("UPTREND_ESTABLISHED")
             return Regime.UPTREND, up_control, upper, lower
