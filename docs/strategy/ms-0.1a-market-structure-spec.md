@@ -104,7 +104,7 @@ A swing is admitted to the active structural chain only when its same-kind class
 
 ## 7. Controlling swing and trend regimes
 
-The controlling swing is the most recent meaningful opposite swing that established/progressed the current directional structure.
+The controlling swing is the most recent meaningful opposite swing in the current structural episode that has not been invalidated by a completed H1 close beyond its boundary. A newly admitted meaningful swing of the same kind replaces the previous controlling swing. An invalidated swing can no longer control the established structure. No additional survival test is required before a newer swing can become controlling.
 
 ### UPTREND
 
@@ -124,6 +124,8 @@ Invalidation is close-based, not wick-based:
 Wicks warn; H1 closes confirm. Invalidation does not automatically establish the opposite trend.
 
 `TRANSITION` exists only after an established regime is invalidated/structurally changed and a replacement regime is not yet established. Invalidated structure remains historical but becomes inactive and non-controlling. Old invalidated structure is not silently revived. Each later invalidation of a replacement regime creates a distinct transition episode.
+
+A transition episode begins at the first completed candle that closes beyond the controlling level of an established regime. The episode includes only swings confirmed after that invalidating close. The invalidating candle belongs to the prior episode. Swings from the prior episode do not count toward the directional establishment requirements of any subsequent regime.
 
 ## 9. RANGE
 
@@ -162,9 +164,9 @@ A range breakout is recorded as a structural event/subtype of the transition pro
 
 `UNCLEAR` is the fallback when evidence is insufficient, ambiguous, internally conflicting, or does not establish UPTREND, DOWNTREND, RANGE, or a post-invalidation transition.
 
-UNCLEAR may move directly to the first valid established regime. TRANSITION is reserved for change after an established regime.
+UNCLEAR may move directly to the first valid established regime. When the directional establishment requirements are first satisfied within the evaluated candles and no prior established regime has been invalidated within those candles, the regime is UPTREND (or DOWNTREND). TRANSITION is returned only when a previously established regime has been invalidated within the evaluated candles and no replacement regime has yet been established.
 
-An established regime persists while its defining conditions remain valid. Isolated opposing evidence does not replace it. Initial evidence that cannot validly distinguish a regime remains UNCLEAR.
+Persistence is a property of the inputs. The regime is re-derived on each evaluation from the candles in scope and the evaluation cutoff. It persists across evaluations exactly when the defining conditions of Section 7 remain valid. Isolated opposing evidence does not replace an established regime while its defining conditions remain valid. Initial evidence that cannot validly distinguish a regime remains UNCLEAR.
 
 ## 11. Domain output contract
 
@@ -215,6 +217,11 @@ Boundary fields are explicit `Optional[PriceZone]` evidence. They are `None` unt
 29. If a same-kind reference exists at confirmation, the relationship classification and exact reference swing are recorded and immutable; an initially unresolved classification may be established later when a valid same-kind reference becomes available, after which both are immutable.
 30. A newly confirmed swing's admission or exclusion triggers one reconsideration pass over unresolved swings in chronological order; each unresolved swing is reconsidered at most once per pass, and outcomes within a pass do not recursively trigger another pass.
 31. Re-evaluation never rewrites prior evaluation output; a swing explicitly excluded as non-extending is not re-evaluated or reinstated under this version.
+32. The controlling swing is the most recent non-invalidated meaningful opposite swing in the current episode; a newly admitted meaningful swing of the same kind replaces the previous controlling swing.
+33. A transition episode contains only swings confirmed after the invalidating close; prior-episode swings do not count toward later establishment.
+34. First establishment is reported as UPTREND or DOWNTREND, not as TRANSITION.
+35. TRANSITION requires an invalidation within the evaluated candles; it is not returned when no established regime has been invalidated in that window.
+36. Regime persistence is a property of the inputs; the regime is re-derived on each evaluation.
 
 ## 13. Acceptance tests
 
@@ -229,6 +236,15 @@ The implementation must cover the existing MS-0.1A lifecycle tests plus:
 
 The broader acceptance suite must also demonstrate candidate detection/replacement, opposing-swing tracking, confirmation, meaningfulness, active-chain construction, HH/HL/LH/LL/equality, controlling-swing updates, UPTREND/DOWNTREND establishment and persistence, invalidation/TRANSITION, UNCLEAR fallback, regime conflict handling, deterministic replay, and explanatory structural events.
 
+The amended contract additionally requires tests for:
+
+- Controlling-swing selection moves to a more recent non-invalidated swing when one is admitted.
+- Controlling-swing clears when invalidated; the engine does not carry an invalidated swing as controlling.
+- After invalidation, prior-episode swings do not count toward directional establishment of a replacement regime.
+- First establishment of 2-HH/2-HL returns UPTREND, not TRANSITION (and the symmetric DOWNTREND case).
+- TRANSITION is returned only after an invalidation within the evaluated candles.
+- Regime persists across evaluations when its defining conditions are unchanged.
+
 The amended contract additionally requires tests for: confirmation without meaningfulness; same-kind-only comparison; exclusion preserving the prior same-kind reference; unresolved-state visibility outside `meaningful_highs`/`meaningful_lows`; frozen classification and recorded reference when classification is established; later establishment of an initially unresolved classification when a same-kind reference becomes available; one reconsideration per unresolved swing per structural-sequence-change pass, processed chronologically without recursive re-triggering; re-evaluation without changing prior evaluation output; and Phase 2 entry only after Section 7 directional establishment requirements are satisfied.
 
 ## 14. Non-goals
@@ -237,4 +253,4 @@ MS-0.1A does not define M15 CP-1/CP-2 confirmation, CP-2 execution-aware buffers
 
 ## 15. Implementation gate
 
-The RANGE boundary-selection ambiguity is closed. This amendment clarifies meaningfulness, same-kind reference selection, one-way exclusion, and observable deferral of conflicting evidence. The unresolved-swing re-evaluation rule is explicit and bounded, while prior evaluations remain immutable. With invariants 1–28 preserved and invariants 29–31 appended, this specification is frozen as the canonical contract for the MS-0.1A implementation rework. The current implementation must be audited and reworked against this specification before merge.
+The RANGE boundary-selection ambiguity is closed. This amendment clarifies controlling-swing selection, transition-episode membership, first establishment, and persistence while preserving the existing meaningfulness and active-chain contract. With invariants 1–31 preserved and invariants 32–36 appended, this specification is the canonical contract for the MS-0.1A implementation rework. The current implementation must be audited and reworked against this specification before merge.
