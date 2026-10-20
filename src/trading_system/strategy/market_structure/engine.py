@@ -234,7 +234,11 @@ class H1MarketStructureEngine(H1MarketStructurePort):
             upper_reactions, lower_reactions = self._range_reactions(meaningful, upper, lower)
             if self._alternates(upper_reactions, lower_reactions):
                 events.extend(("RANGE_BOUNDARIES_SELECTED", "RANGE_ALTERNATING_REACTIONS_CONFIRMED"))
-                breakout = self._range_breakout(eligible, meaningful, upper, lower)
+                breakout = (
+                    None
+                    if self._has_established_trend(labels)
+                    else self._range_breakout(eligible, meaningful, upper, lower)
+                )
                 if breakout is not None:
                     events.append(f"RANGE_BREAKOUT_{breakout}")
                     return Regime.TRANSITION, None, upper, lower
@@ -245,7 +249,11 @@ class H1MarketStructureEngine(H1MarketStructurePort):
         if up:
             if self._invalidated(eligible, up_control):
                 events.append("UPTREND_INVALIDATED")
-                return Regime.TRANSITION, up_control, upper, lower
+                down, down_control = self._trend_status("DOWN", meaningful, labels)
+                if down and not self._invalidated(eligible, down_control):
+                    events.append("DOWNTREND_ESTABLISHED")
+                    return Regime.DOWNTREND, down_control, upper, lower
+                return Regime.TRANSITION, None, upper, lower
             events.append("UPTREND_ESTABLISHED")
             return Regime.UPTREND, up_control, upper, lower
 
@@ -253,7 +261,7 @@ class H1MarketStructureEngine(H1MarketStructurePort):
         if down:
             if self._invalidated(eligible, down_control):
                 events.append("DOWNTREND_INVALIDATED")
-                return Regime.TRANSITION, down_control, upper, lower
+                return Regime.TRANSITION, None, upper, lower
             events.append("DOWNTREND_ESTABLISHED")
             return Regime.DOWNTREND, down_control, upper, lower
 
@@ -358,12 +366,20 @@ class H1MarketStructureEngine(H1MarketStructurePort):
         if not reactions:
             return None
         start = max(reactions)
-        for candle in candles:
-            if candle.timestamp_close <= start:
+        later = [candle for candle in candles if candle.timestamp_close > start]
+        for index, candle in enumerate(later):
+            if candle.close >= upper.upper:
+                direction = "UP"
+            elif candle.close <= lower.lower:
+                direction = "DOWN"
+            else:
                 continue
-            if candle.close > upper.upper:
+            if index + 1 == len(later):
+                return None
+            follow_close = later[index + 1].close
+            if direction == "UP" and follow_close >= upper.upper:
                 return "UP"
-            if candle.close < lower.lower:
+            if direction == "DOWN" and follow_close <= lower.lower:
                 return "DOWN"
         return None
 
