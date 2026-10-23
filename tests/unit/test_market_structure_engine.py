@@ -171,22 +171,38 @@ def test_r56_replacement_downtrend_established_after_uptrend_invalidation_is_not
     # changed and a replacement regime is not yet established."
     engine = H1MarketStructureEngine()
     swings = [
-        confirmed(1, SwingKind.HIGH, "1.0800"),
-        confirmed(2, SwingKind.LOW, "1.0600"),
-        confirmed(3, SwingKind.HIGH, "1.0900"),
-        confirmed(4, SwingKind.LOW, "1.0700"),
-        confirmed(5, SwingKind.HIGH, "1.1000"),
-        confirmed(6, SwingKind.LOW, "1.0800"),
-        confirmed(7, SwingKind.HIGH, "1.1100"),
-        confirmed(8, SwingKind.LOW, "1.0900"),  # old controlling HL
-        confirmed(10, SwingKind.HIGH, "1.1000"),  # LH
-        confirmed(11, SwingKind.LOW, "1.0850"),  # LL
-        confirmed(12, SwingKind.HIGH, "1.0950"),  # LH, controlling LH
-        confirmed(13, SwingKind.LOW, "1.0800"),  # LL
-    ]
+    # Prior episode (UPTREND)
+    confirmed(1, SwingKind.HIGH, "1.0800"),
+    confirmed(2, SwingKind.LOW,  "1.0600"),
+    confirmed(3, SwingKind.HIGH, "1.0900"),
+    confirmed(4, SwingKind.LOW,  "1.0700"),
+    confirmed(5, SwingKind.HIGH, "1.1000"),
+    confirmed(6, SwingKind.LOW,  "1.0800"),
+    confirmed(7, SwingKind.HIGH, "1.1100"),
+    confirmed(8, SwingKind.LOW,  "1.0900"),  # controlling HL, to be invalidated
+    # Replacement episode (must establish DOWNTREND on its own)
+    confirmed(10, SwingKind.HIGH, "1.1000"),  # 1st HIGH in episode, no label
+    confirmed(11, SwingKind.LOW,  "1.0850"),  # 1st LOW in episode, no label
+    confirmed(12, SwingKind.HIGH, "1.0950"),  # LH vs 1.1000
+    confirmed(13, SwingKind.LOW,  "1.0800"),  # LL vs 1.0850
+    confirmed(14, SwingKind.HIGH, "1.0900"),  # LH vs 1.0950
+    confirmed(15, SwingKind.LOW,  "1.0750"),  # LL vs 1.0800
+]
     labels = engine._relationship_labels(swings)
     assert list(labels.values()).count("LH") >= 2  # precondition: replacement DOWNTREND evidence
     assert list(labels.values()).count("LL") >= 2
+    # Precondition: the post-invalidation episode (hours 10-15) contains
+    # at least 2 LH + 2 LL on its own, so DOWNTREND can establish from
+    # episode-scoped evidence alone.
+    episode_start_ts = swings[8].swing.timestamp  # first post-invalidation swing (hour 10)
+    episode_swings = [x for x in swings if x.swing.timestamp >= episode_start_ts]
+    episode_labels = engine._relationship_labels(episode_swings)
+    assert list(episode_labels.values()).count("LH") >= 2, (
+        f"episode-scoped labels must contain 2 LH; got {list(episode_labels.values())}"
+    )
+    assert list(episode_labels.values()).count("LL") >= 2, (
+        f"episode-scoped labels must contain 2 LL; got {list(episode_labels.values())}"
+    )
     # Completed close 1.0850 below old controlling HL 1.0900 (before the LH/LL swings),
     # and no close above controlling LH 1.0950 afterwards.
     invalidation = [candle(9, "1.0900", "1.0910", "1.0840", "1.0850")]
@@ -196,7 +212,7 @@ def test_r56_replacement_downtrend_established_after_uptrend_invalidation_is_not
         f"(LH 1.1000/1.0950, LL 1.0850/1.0800, controlling LH 1.0950) is established, "
         f"so TRANSITION must not be reported; regime was {regime}"
     )
-    assert controlling == swings[10].swing
+    assert controlling == swings[12].swing
 
 
 def test_r57_invalidated_structure_is_non_controlling_in_transition() -> None:
@@ -323,3 +339,162 @@ def test_r68_established_uptrend_persists_after_close_above_last_swing_high() ->
         f"does not break the controlling HL, but regime was {regime}"
     )
     assert controlling == swings[-1].swing
+
+def test_t1_controlling_swing_moves_to_new_same_kind_swing() -> None:
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),
+        confirmed(4, SwingKind.LOW,  "1.0700"),
+        confirmed(5, SwingKind.HIGH, "1.1000"),
+        confirmed(6, SwingKind.LOW,  "1.0800"),
+    ]
+    labels = engine._relationship_labels(swings)
+    _, before, _, _ = engine._classify([], swings, labels, [])
+    assert before == swings[5].swing
+
+    swings.append(confirmed(7, SwingKind.LOW, "1.0900"))
+    labels = engine._relationship_labels(swings)
+    _, after, _, _ = engine._classify([], swings, labels, [])
+    assert after == swings[6].swing, (
+        f"new HL {swings[6].swing.price} should become controlling; got {after}"
+    )
+
+def test_t2_controlling_swing_cleared_when_invalidated() -> None:
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),
+        confirmed(4, SwingKind.LOW,  "1.0700"),
+        confirmed(5, SwingKind.HIGH, "1.1000"),
+        confirmed(6, SwingKind.LOW,  "1.0800"),
+    ]
+    labels = engine._relationship_labels(swings)
+    invalidation = [candle(7, "1.0800", "1.0810", "1.0750", "1.0760")]
+    regime, controlling, _, _ = engine._classify(invalidation, swings, labels, [])
+    assert regime is Regime.TRANSITION
+    assert controlling is None, (
+        f"invalidated HL {swings[5].swing.price} must not be controlling; got {controlling}"
+    )
+
+def test_t3_post_invalidation_episode_only_counts_new_swings() -> None:
+    # MS-0.1A §8 / invariant 33: "A transition episode contains only swings
+    # confirmed after the invalidating close; prior-episode swings do not
+    # count toward later establishment."
+    #
+    # Fixture:
+    #   - Prior UPTREND episode: 3 HH, 3 HL.
+    #   - Invalidation close at hour 7 (1.0760 < 1.0800 controlling HL).
+    #   - Post-invalidation swings: 1 LH, 1 LL, then 1 more LH, 1 more LL.
+    #     Episode-scoped, that's 2 LH + 2 LL and DOWNTREND could establish.
+    #     BUT the first post-invalidation HIGH/LOW have no same-kind reference
+    #     within the episode, so episode-scoped labels would be:
+    #       hour 8: no prior HIGH in episode -> no label
+    #       hour 9: no prior LOW in episode  -> no label
+    #       hour 10: LH vs hour 8 (1.0850 < 1.0900)
+    #       hour 11: LL vs hour 9 (1.0700 < 1.0750)
+    #     That's 1 LH + 1 LL episode-scoped -- insufficient for DOWNTREND.
+    #
+    # Broken (count all historical labels):
+    #   hour 8 vs hour 5 (1.0900 < 1.1000) -> LH
+    #   hour 9 vs hour 6 (1.0750 < 1.0800) -> LL
+    #   hour 10 vs hour 8 (1.0850 < 1.0900) -> LH
+    #   hour 11 vs hour 9 (1.0700 < 1.0750) -> LL
+    #   2 LH + 2 LL -> DOWNTREND establishes.
+    engine = H1MarketStructureEngine()
+    prior = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),
+        confirmed(4, SwingKind.LOW,  "1.0700"),
+        confirmed(5, SwingKind.HIGH, "1.1000"),
+        confirmed(6, SwingKind.LOW,  "1.0800"),
+    ]
+    post = [
+        confirmed(8,  SwingKind.HIGH, "1.0900"),
+        confirmed(9,  SwingKind.LOW,  "1.0750"),
+        confirmed(10, SwingKind.HIGH, "1.0850"),
+        confirmed(11, SwingKind.LOW,  "1.0700"),
+    ]
+    all_swings = prior + post
+    labels = engine._relationship_labels(all_swings)
+    invalidation = [candle(7, "1.0800", "1.0810", "1.0750", "1.0760")]
+    regime, controlling, _, _ = engine._classify(invalidation, all_swings, labels, [])
+    assert regime is not Regime.DOWNTREND, (
+        f"post-invalidation episode has only 1 LH + 1 LL (hour 10 vs hour 8, "
+        f"hour 11 vs hour 9); DOWNTREND requires 2 LH + 2 LL from post-swing "
+        f"evidence only; prior-episode swings (hour 5 HH, hour 6 HL) must not "
+        f"contribute; got {regime}"
+    )
+
+
+def test_t4_first_establishment_returns_uptrend_not_transition() -> None:
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),
+        confirmed(4, SwingKind.LOW,  "1.0700"),
+        confirmed(5, SwingKind.HIGH, "1.1000"),
+        confirmed(6, SwingKind.LOW,  "1.0800"),
+    ]
+    labels = engine._relationship_labels(swings)
+    regime, _, _, _ = engine._classify([], swings, labels, [])
+    assert regime is Regime.UPTREND, (
+        f"first establishment of 2 HH + 2 HL with no prior invalidation must be "
+        f"UPTREND, not TRANSITION; got {regime}"
+    )
+
+def test_t5_invalidation_requires_close_after_controlling_swing() -> None:
+    # MS-0.1A §8: "UPTREND → completed H1 close below controlling HL."
+    # MS-0.1A §10 / invariant 35: TRANSITION requires an invalidation within
+    # the evaluated candles. A close below the controlling HL that occurred
+    # BEFORE the controlling swing formed cannot invalidate it.
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),
+        confirmed(4, SwingKind.LOW,  "1.0700"),
+        confirmed(5, SwingKind.HIGH, "1.1000"),
+        confirmed(6, SwingKind.LOW,  "1.0800"),  # controlling HL at hour 6
+    ]
+    labels = engine._relationship_labels(swings)
+
+    # Two candles passed to _classify:
+    #   - hour 0: closes at 1.0700, BELOW the controlling HL 1.0800, but its
+    #     timestamp_close (hour 1) is BEFORE the controlling swing's timestamp
+    #     (hour 6). The timestamp guard must skip this candle.
+    #   - hour 7: closes at 1.1050, ABOVE the controlling HL 1.0800, so it
+    #     does not invalidate.
+    candles = [
+        candle(0, "1.0900", "1.0910", "1.0690", "1.0700"),
+        candle(7, "1.1000", "1.1060", "1.0990", "1.1050"),
+    ]
+    regime, controlling, _, _ = engine._classify(candles, swings, labels, [])
+    assert regime is Regime.UPTREND, (
+        f"hour-0 close 1.0700 predates controlling HL 1.0800 (hour 6); "
+        f"only closes after the controlling swing can invalidate; "
+        f"got {regime}"
+    )
+    assert controlling == swings[5].swing
+
+def test_t6_regime_persistence_across_evaluations() -> None:
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),
+        confirmed(4, SwingKind.LOW,  "1.0700"),
+        confirmed(5, SwingKind.HIGH, "1.1000"),
+        confirmed(6, SwingKind.LOW,  "1.0800"),
+    ]
+    labels = engine._relationship_labels(swings)
+    first, _, _, _ = engine._classify([], swings, labels, [])
+    second, _, _, _ = engine._classify([], swings, labels, [])
+    third, _, _, _ = engine._classify([], swings, labels, [])
+    assert first == second == third, (
+        f"identical inputs must produce identical regime; got {first}, {second}, {third}"
+    )
