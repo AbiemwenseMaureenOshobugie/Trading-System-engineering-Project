@@ -148,8 +148,10 @@ class H1MarketStructureEngine(H1MarketStructurePort):
                         candidate.kind is SwingKind.HIGH and candidate.extreme > opposing.extreme
                     )
                     if replaces:
+                        old_ts = opposing.candle.timestamp_open.isoformat()
+                        new_ts = candidate.candle.timestamp_open.isoformat()
                         opposing = candidate
-                        events.append(f"OPPOSING_SWING_UPDATED:{candidate.candle.timestamp_open.isoformat()}")
+                        events.append(f"OPPOSING_SWING_UPDATED:{old_ts}:{new_ts}")
 
             if active is None or opposing is None:
                 continue
