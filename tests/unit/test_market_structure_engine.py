@@ -498,3 +498,35 @@ def test_t6_regime_persistence_across_evaluations() -> None:
     assert first == second == third, (
         f"identical inputs must produce identical regime; got {first}, {second}, {third}"
     )
+
+def test_r13_opposing_swing_replacement_records_old_and_new_reference() -> None:
+    # MS-0.1A §3: "When replacement occurs, rebind the pending confirmation
+    # predicate to the new opposing reference. The active candidate's identity,
+    # zone, and origin remain unchanged. Record the replacement and both the
+    # old and new opposing references in structural_events."
+    engine = H1MarketStructureEngine()
+    candles = [
+        candle(0, "1.1000", "1.1050", "1.0950", "1.1000"),
+        candle(1, "1.1000", "1.1100", "1.1000", "1.1050"),  # HIGH candidate at hour 1
+        candle(2, "1.1050", "1.1080", "1.1000", "1.1030"),
+        candle(3, "1.1030", "1.1050", "1.0850", "1.0880"),  # LOW candidate at hour 3 (opposing)
+        candle(4, "1.0880", "1.0950", "1.0870", "1.0930"),
+        candle(5, "1.0930", "1.0950", "1.0800", "1.0850"),  # LOW at hour 5 (more extreme, replaces)
+        candle(6, "1.0850", "1.0900", "1.0830", "1.0880"),
+    ]
+    events: list[str] = []
+    candidates = engine._candidates(candles, [])
+    engine._confirm_candidates(candles, candidates, events)
+
+    updates = [e for e in events if e.startswith("OPPOSING_SWING_UPDATED:")]
+    assert len(updates) == 1, f"expected exactly one OPPOSING_SWING_UPDATED, got {updates}"
+
+    event = updates[0]
+    old_ts = candles[3].timestamp_open.isoformat()
+    new_ts = candles[5].timestamp_open.isoformat()
+    assert old_ts in event, (
+        f"R13 requires recording the old opposing reference {old_ts}; got {event}"
+    )
+    assert new_ts in event, (
+        f"R13 requires recording the new opposing reference {new_ts}; got {event}"
+    )
