@@ -247,20 +247,34 @@ class H1MarketStructureEngine(H1MarketStructurePort):
 
         up, up_control = self._trend_status("UP", meaningful, labels)
         if up:
-            if self._invalidated(eligible, up_control):
+            invalidation_ts = self._first_invalidation_timestamp(eligible, up_control)
+            if invalidation_ts is not None:
                 events.append("UPTREND_INVALIDATED")
-                down, down_control = self._trend_status("DOWN", meaningful, labels)
-                if down and not self._invalidated(eligible, down_control):
+                episode_meaningful = [
+                    x for x in meaningful if x.swing.timestamp >= invalidation_ts
+                ]
+                episode_labels = self._relationship_labels(episode_meaningful)
+                down2, down_control2 = self._trend_status("DOWN", episode_meaningful, episode_labels)
+                if down2 and self._first_invalidation_timestamp(eligible, down_control2) is None:
                     events.append("DOWNTREND_ESTABLISHED")
-                    return Regime.DOWNTREND, down_control, upper, lower
+                    return Regime.DOWNTREND, down_control2, upper, lower
                 return Regime.TRANSITION, None, upper, lower
             events.append("UPTREND_ESTABLISHED")
             return Regime.UPTREND, up_control, upper, lower
 
         down, down_control = self._trend_status("DOWN", meaningful, labels)
         if down:
-            if self._invalidated(eligible, down_control):
+            invalidation_ts = self._first_invalidation_timestamp(eligible, down_control)
+            if invalidation_ts is not None:
                 events.append("DOWNTREND_INVALIDATED")
+                episode_meaningful = [
+                    x for x in meaningful if x.swing.timestamp >= invalidation_ts
+                ]
+                episode_labels = self._relationship_labels(episode_meaningful)
+                up2, up_control2 = self._trend_status("UP", episode_meaningful, episode_labels)
+                if up2 and self._first_invalidation_timestamp(eligible, up_control2) is None:
+                    events.append("UPTREND_ESTABLISHED")
+                    return Regime.UPTREND, up_control2, upper, lower
                 return Regime.TRANSITION, None, upper, lower
             events.append("DOWNTREND_ESTABLISHED")
             return Regime.DOWNTREND, down_control, upper, lower
@@ -293,6 +307,21 @@ class H1MarketStructureEngine(H1MarketStructurePort):
             if controlling.kind is SwingKind.HIGH and candle.close > controlling.price:
                 return True
         return False
+
+    @staticmethod
+    def _first_invalidation_timestamp(
+        candles: Sequence[MarketCandle], controlling: SwingPoint | None
+    ) -> datetime | None:
+        if controlling is None:
+            return None
+        for candle in candles:
+            if candle.timestamp_close <= controlling.timestamp:
+                continue
+            if controlling.kind is SwingKind.LOW and candle.close < controlling.price:
+                return candle.timestamp_close
+            if controlling.kind is SwingKind.HIGH and candle.close > controlling.price:
+                return candle.timestamp_close
+        return None
 
     @staticmethod
     def _has_established_trend(labels: dict[datetime, str]) -> bool:
