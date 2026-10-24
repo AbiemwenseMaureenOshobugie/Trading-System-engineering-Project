@@ -62,6 +62,8 @@ Two-phase establishment applies:
 1. **Phase 1 — structural establishment:** confirmed swings may be retained as reference observations while the engine evaluates whether the first valid meaningful structural sequence can be established. A confirmed swing is not automatically meaningful merely because it is available as a reference.
 2. **Phase 2 — established structure:** Phase 2 begins only after the directional establishment requirements in Section 7 are satisfied. Once established, only the most recent meaningful opposite swing may confirm new structural progression. Confirmed-but-not-meaningful swings cannot do so.
 
+When the active structural sequence is empty at the start of evaluation, or becomes empty immediately after invalidation, the first confirmed HIGH and the first confirmed LOW of the episode are admitted into the active structural sequence as Phase 1 reference observations with CLASSIFICATION_UNRESOLVED classification. This classification is permanent within the episode and does not change on later evaluation. An admitted Phase 1 observation shall serve as the same-kind reference for subsequent confirmed swings of the same kind within the episode, even though the Phase 1 observation itself remains CLASSIFICATION_UNRESOLVED.
+
 During Phase 1, the engine must use the same-kind reference and structural-consistency rules below. It must not introduce an additional bootstrap or bridge rule that is not defined by this specification.
 
 ### Active structural sequence
@@ -85,6 +87,8 @@ For a candidate confirmed HIGH, the reference is the most recent previously acce
 - A HIGH is never compared directly with a LOW to determine `HH` or `LH`; a LOW is never compared directly with a HIGH to determine `HL` or `LL`.
 - If an accepted meaningful same-kind reference exists at the swing's confirmation evaluation, the engine records both the relationship classification and the exact reference swing used. That classification and reference are immutable.
 - If no accepted meaningful same-kind reference exists, the engine records `CLASSIFICATION_UNRESOLVED`; it must not invent a bootstrap reference. At a later evaluation, the engine may establish the initial relationship classification when a valid same-kind reference becomes available. At that point, it records the reference used and freezes both the classification and reference. This establishes a previously unknown classification; it does not recalculate an established classification.
+
+The reconsideration rule in this section applies only to swings whose unresolved state arises from conflicting or insufficient same-kind/opposite-kind evidence. It does not apply to the Phase 1 CLASSIFICATION_UNRESOLVED state described in Section 5, which is permanent within the episode.
 
 Equality is defined only by zone overlap. No numerical tolerance is added.
 
@@ -214,7 +218,7 @@ Boundary fields are explicit `Optional[PriceZone]` evidence. They are `None` unt
 26. A confirmed swing excluded as non-extending does not replace its same-kind reference and is not silently reinstated.
 27. Conflicting or insufficient same-kind/opposite-kind evidence produces an observable unresolved confirmed swing; it is not admitted to the active sequence until a later evaluation resolves it under Section 6.
 28. Phase 2 begins only after the applicable directional establishment requirements in Section 7 are satisfied.
-29. If a same-kind reference exists at confirmation, the relationship classification and exact reference swing are recorded and immutable; an initially unresolved classification may be established later when a valid same-kind reference becomes available, after which both are immutable.
+29. If a same-kind reference exists at confirmation, the relationship classification and exact reference swing are recorded and immutable; an initially unresolved classification may be established later when a valid same-kind reference becomes available, after which both are immutable. This clause applies only to swings unresolved due to conflicting or insufficient evidence; it does not apply to Phase 1 CLASSIFICATION_UNRESOLVED states, which are permanent within the episode.
 30. A newly confirmed swing's admission or exclusion triggers one reconsideration pass over unresolved swings in chronological order; each unresolved swing is reconsidered at most once per pass, and outcomes within a pass do not recursively trigger another pass.
 31. Re-evaluation never rewrites prior evaluation output; a swing explicitly excluded as non-extending is not re-evaluated or reinstated under this version.
 32. The controlling swing is the most recent non-invalidated meaningful opposite swing in the current episode; a newly admitted meaningful swing of the same kind replaces the previous controlling swing.
@@ -253,4 +257,4 @@ MS-0.1A does not define M15 CP-1/CP-2 confirmation, CP-2 execution-aware buffers
 
 ## 15. Implementation gate
 
-The RANGE boundary-selection ambiguity is closed. This amendment clarifies controlling-swing selection, transition-episode membership, first establishment, and persistence while preserving the existing meaningfulness and active-chain contract. With invariants 1–31 preserved and invariants 32–36 appended, this specification is the canonical contract for the MS-0.1A implementation rework. The current implementation must be audited and reworked against this specification before merge.
+The RANGE boundary-selection ambiguity is closed. Amendment 04 clarified controlling-swing selection, transition-episode membership, first establishment, and persistence. Amendment 05 clarifies Phase 1 bootstrap behavior: the first confirmed HIGH and first confirmed LOW of an empty episode are admitted with CLASSIFICATION_UNRESOLVED classification, which is permanent within the episode; they serve as same-kind references for subsequent swings; and §6's reconsideration rule applies only to swings unresolved due to conflicting or insufficient evidence, not to Phase 1 unresolved states. With invariants 1–31 preserved, invariants 32–36 appended, and invariant 29 scoped to evidence-conflict cases only, this specification is the canonical contract for the MS-0.1A implementation rework. The current implementation must be audited and reworked against this specification before merge.
