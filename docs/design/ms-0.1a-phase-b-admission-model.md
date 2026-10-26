@@ -59,12 +59,22 @@ These are conceptually separate. A confirmed swing can be:
 
 The classification record is a public type, because it is exposed on MarketStructureState for downstream consumers and tests. It is immutable, self-contained, and has no reference to engine-internal types.
 
+Classification labels are typed via an enum, so invalid values cannot be represented:
+
+    class SwingClassification(Enum):
+        HH = "HH"
+        LH = "LH"
+        HL = "HL"
+        LL = "LL"
+        EQ_HIGH = "EQ_HIGH"
+        EQ_LOW = "EQ_LOW"
+
     @dataclass(frozen=True, slots=True)
     class ClassificationRecord:
         swing_timestamp: datetime
         swing_kind: SwingKind
         swing_price: Decimal
-        classification: str | None  # "HH" / "LH" / "HL" / "LL" / "EQ_HIGH" / "EQ_LOW" / None
+        classification: SwingClassification | None  # None only for Phase 1 bootstrap
         reference_timestamp: datetime | None
         is_bootstrap: bool
 
@@ -75,7 +85,7 @@ The admission ledger and result are internal to the engine (private, not exposed
         admitted: tuple[_Confirmed, ...]
         unresolved: tuple[_Confirmed, ...]
         excluded: tuple[_Confirmed, ...]
-        classification: dict[datetime, ClassificationRecord]
+        classification: tuple[ClassificationRecord, ...]  # immutable; ordered by swing_timestamp
         episode_start: datetime | None
 
     @dataclass(frozen=True, slots=True)
@@ -85,41 +95,45 @@ The admission ledger and result are internal to the engine (private, not exposed
 
 ### 4.3 Changes to MarketStructureState
 
-Add three fields:
-
-    excluded_swings: tuple[SwingPoint, ...]
-        # confirmed swings excluded from the active sequence (Round 2)
+Round 1 adds two fields:
 
     classification_records: tuple[ClassificationRecord, ...]
-        # one record per confirmed swing, ordered by swing_timestamp (Round 1)
+        # one record per confirmed swing, ordered by swing_timestamp
 
     confirmed_swings: tuple[SwingPoint, ...]
-        # the confirmed swings themselves, ordered by timestamp (Round 1)
+        # the confirmed swings themselves, ordered by timestamp
+
+Round 2 adds one more field:
+
+    excluded_swings: tuple[SwingPoint, ...]
+        # confirmed swings excluded from the active sequence
 
 All existing fields preserved. These additions are backwards-compatible per §11 ("at minimum").
 
-Round 1 populates `classification_records` and `confirmed_swings`; `excluded_swings` remains an empty tuple in Round 1 and is populated in Round 2.
+A field is added only when the corresponding behavior is implemented. `excluded_swings` is deferred to Round 2 because Round 1 produces no exclusions. Adding a field that is permanently empty in Round 1 would imply functionality the milestone does not yet provide.
 
 ## 5. _meaningful_swings signature and behavior
 
 ### 5.1 Signature
 
+Round 1 signature:
+
     def _meaningful_swings(
         self,
         confirmed: Sequence[_Confirmed],
-        eligible: Sequence[MarketCandle],
-        events: list[str],
     ) -> _AdmissionResult:
 
-`eligible` is the candle list (needed to determine episode boundaries from prior invalidations). The method returns an `_AdmissionResult` containing the ledger and the events it produced. The caller (`evaluate`) extends its `events` list with `result.events`.
+The method returns an `_AdmissionResult` containing the ledger and the events it produced. The caller (`evaluate`) extends its `events` list with `result.events`.
 
-The engine's `evaluate()` method is the public surface. It calls `_meaningful_swings`, gets the `_AdmissionResult`, and projects the ledger's `classification` dict onto `MarketStructureState.classification_records` (as a sorted tuple of `ClassificationRecord`), and the confirmed swings onto `confirmed_swings`. The `_AdmissionLedger` and `_AdmissionResult` are engine-internal and not exposed on `MarketStructureState`.
+Round 2 extends the signature to include episode-boundary inputs (e.g., `eligible: Sequence[MarketCandle]`) when multi-episode semantics are implemented. Round 1 does not include unused parameters.
+
+The engine's `evaluate()` method is the public surface. It calls `_meaningful_swings`, gets the `_AdmissionResult`, and projects the ledger's `classification` tuple onto `MarketStructureState.classification_records`, and the confirmed swings onto `confirmed_swings`. The `_AdmissionLedger` and `_AdmissionResult` are engine-internal and not exposed on `MarketStructureState`.
 
 ### 5.2 Algorithm
 
 Process `confirmed` in chronological order. For each swing:
 
-1. Determine episode start. Compute the episode start as the last invalidation timestamp or None for the first episode. Swings before the episode start belong to a prior episode and are historical.
+1. Determine episode start. In Round 1, episode start is always None (single-episode assumption): the entire `confirmed` set is treated as the first episode. Multi-episode handling — deriving episode start from prior invalidations in `eligible` — is deferred to Round 2. Round 1's behavior must not be interpreted as correct for fixtures that include an invalidation; those fixtures are Round 2 scope.
 
 2. Check if the swing is a Phase 1 bootstrap. A swing is Phase 1 bootstrap if no prior admitted same-kind swing exists in the current episode and it is the first confirmed HIGH or first confirmed LOW of the episode. Per amendment 05 §A: such a swing is admitted with CLASSIFICATION_UNRESOLVED (permanent within episode).
 
@@ -171,13 +185,20 @@ The full transition table is in `docs/design/ms-0.1a-phase-b-transition-table.md
 ### 8.1 Round 1 — Foundation (Group B partial)
 
 Files changed:
-- src/trading_system/strategy/market_structure/engine.py (types + _meaningful_swings partial rewrite + _state signature)
-- src/trading_system/domain/models.py (MarketStructureState.excluded_swings field)
+- src/trading_system/strategy/market_structure/engine.py (types + _meaningful_swings partial rewrite + _state signature + evaluate wiring)
+- src/trading_system/domain/models.py (SwingClassification enum, ClassificationRecord, MarketStructureState fields)
 - tests/unit/test_market_structure_engine.py (new tests for R40, R41, R22 partial)
 
-Behavior: Phase 1 swings get CLASSIFICATION_UNRESOLVED. Non-bootstrap swings get classified against most recent admitted same-kind reference. Every classified swing is still admitted (no gate). No exclusions yet.
+Behavior: Phase 1 swings get CLASSIFICATION_UNRESOLVED (bootstrap). Non-bootstrap swings get classified against the most recent admitted same-kind reference. Every classified swing is still admitted (no admission gate). No exclusions in Round 1.
 
-Tests target: R40, R41, plus partial-coverage tests for R22, R32. Baseline regressions from R56, R59, R65, R68 must still pass.
+**Milestone constraint:** Round 1 implements single-episode semantics only. Episode start is always None. Multi-episode handling (per-episode Phase 1 bootstrap after invalidation) is deferred to Round 2. This is a scope boundary, not a claim that multi-episode behavior is currently correct.
+
+Tests target:
+- R41 — exact bootstrap records for the confirmed HIGH and LOW (typed as `is_bootstrap=True, classification=None`).
+- R40 — typed classifications (`SwingClassification.HH` / `.HL`) and reference timestamps for the second HIGH and second LOW.
+- R22 — explicitly named `test_r22_partial_classification_records_present`, verifying that classification records exist for non-bootstrap swings. This is a partial test; the full R22 invariant (structural relationships determine admission) requires Round 2's admission gate.
+
+Baseline regressions from R56, R59, R65, R68 must still pass.
 
 Expected full-suite count after Round 1: 326 + 3 = 329 passed.
 
@@ -229,3 +250,4 @@ Any regression is a Phase B defect that must be addressed before the round compl
 - 2026-10-25: Initial draft, based on fresh conformance audit and Amendments 05/06.
 - 2026-10-25: Finalized. Five design decisions accepted, two-round split approved.
 - 2026-10-25: Amendment. ClassificationRecord promoted to public immutable dataclass. MarketStructureState extended with classification_records and confirmed_swings fields for testability and downstream consumers. _AdmissionLedger and _AdmissionResult explicitly remain engine-internal.
+- 2026-10-26: Amendment 02. Immutable ledger (classification as tuple, not dict). SwingClassification enum for typed labels. excluded_swings deferred to Round 2. Round 1 restricted to single-episode semantics. _meaningful_swings signature for Round 1 is `(confirmed)` without unused parameters. R22 test renamed to reflect partial scope.

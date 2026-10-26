@@ -12,11 +12,15 @@ All tests target `tests/unit/test_market_structure_engine.py`.
 - **Test name:** `test_r41_phase1_swing_classification_unresolved`
 - **Requirement:** R41 ("If no accepted meaningful same-kind reference exists, the engine records CLASSIFICATION_UNRESOLVED.")
 - **Spec:** §6, Amendment 05 §A
-- **Fixture:** Validated candle sequence producing exactly two confirmed swings: Phase 1 HIGH at hour 1, Phase 1 LOW at hour 7.
+- **Fixture:** Validated candle sequence producing exactly two confirmed swings:
+  - HIGH at `2026-01-01T01:00:00+00:00`, price 1.1100, confirmed at `2026-01-01T06:00:00+00:00`
+  - LOW at `2026-01-01T07:00:00+00:00`, price 1.0650, confirmed at `2026-01-01T12:00:00+00:00`
 - **Assertions:**
-  - `state.structural_events` contains `SWING_MEANINGFUL_PHASE1:<HIGH_ts>` and `SWING_MEANINGFUL_PHASE1:<LOW_ts>`
-  - `state.structural_events` contains `SWING_CONFIRMED_UNRESOLVED:<HIGH_ts>:bootstrap` and `SWING_CONFIRMED_UNRESOLVED:<LOW_ts>:bootstrap`
-- **Baseline (pre-Round-1):** FAILS — current engine emits only `SWING_MEANINGFUL_PHASE1`, no unresolved event.
+  - `state.structural_events` contains exactly one `SWING_MEANINGFUL_PHASE1:2026-01-01T01:00:00+00:00` and exactly one `SWING_MEANINGFUL_PHASE1:2026-01-01T07:00:00+00:00`
+  - `state.structural_events` contains exactly one `SWING_CONFIRMED_UNRESOLVED:2026-01-01T01:00:00+00:00:bootstrap` and exactly one `SWING_CONFIRMED_UNRESOLVED:2026-01-01T07:00:00+00:00:bootstrap`
+  - `state.classification_records` contains exactly two records, both with `is_bootstrap=True` and `classification=None`
+  - The two bootstrap records correspond to the HIGH at hour 1 and the LOW at hour 7 (verify by `swing_timestamp`)
+- **Baseline (pre-Round-1):** FAILS — current engine emits only `SWING_MEANINGFUL_PHASE1`, no `SWING_CONFIRMED_UNRESOLVED:*:bootstrap` event and no `classification_records` attribute on `MarketStructureState`.
 - **Post-Round-1:** PASSES.
 
 ### T-R40 — Classification and reference recorded
@@ -31,18 +35,19 @@ All tests target `tests/unit/test_market_structure_engine.py`.
 - **Baseline:** FAILS — `_meaningful_swings` currently returns `list[_Confirmed]`, not `_AdmissionResult`. Failure is `AttributeError: 'list' object has no attribute 'ledger'`.
 - **Post-Round-1:** PASSES.
 
-### T-R22-partial — Relationship determines participation (partial)
+### T-R22-partial — Classification records present for non-bootstrap swings (partial)
 
-- **Test name:** `test_r22_relationship_determines_participation`
-- **Requirement:** R22 ("structural relationships determine current active participation") — partial coverage.
+- **Test name:** `test_r22_partial_classification_records_present`
+- **Requirement:** R22 ("structural relationships determine current active participation") — **partial coverage only**.
 - **Spec:** §5
-- **Fixture:** Construct `_Confirmed` objects directly: Phase 1 HIGH, Phase 1 LOW, and subsequent swings of each kind. Call `_meaningful_swings` directly.
+- **Fixture:** Construct `_Confirmed` objects directly: Phase 1 HIGH, Phase 1 LOW, and two subsequent swings of each kind. Call `_meaningful_swings` directly with `confirmed=swings`.
 - **Assertions:**
-  - Every non-bootstrap confirmed swing has a classification record with non-None classification
-  - Bootstrap swings have `is_bootstrap=True` and `classification=None`
-  - Classification is computed before any admission decision
+  - Exactly 2 bootstrap records exist (`is_bootstrap=True, classification=None`)
+  - Every non-bootstrap swing has a classification record with a non-None `SwingClassification` value
+  - No record has `is_bootstrap=False` and `classification=None` (invalid combination)
 - **Baseline:** FAILS — `_meaningful_swings` returns `list[_Confirmed]`, not `_AdmissionResult`.
 - **Post-Round-1:** PASSES (partial).
+- **Note:** This test does NOT verify that structural relationships determine admission. That requires Round 2's admission gate. The test is explicitly named with "partial" to reflect its scope.
 
 ## Round 2 tests (Group A + Group B remaining)
 
