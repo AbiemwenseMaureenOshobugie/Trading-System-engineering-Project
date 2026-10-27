@@ -530,3 +530,165 @@ def test_r13_opposing_swing_replacement_records_old_and_new_reference() -> None:
     assert new_ts in event, (
         f"R13 requires recording the new opposing reference {new_ts}; got {event}"
     )
+
+def test_r41_phase1_swing_classification_unresolved() -> None:
+    # MS-0.1A section 6 + Amendment 05 section A: the first confirmed HIGH
+    # and first confirmed LOW of an episode are admitted with
+    # CLASSIFICATION_UNRESOLVED and emit SWING_CONFIRMED_UNRESOLVED:bootstrap.
+    engine = H1MarketStructureEngine()
+    candles = [
+        candle(0,  "1.1000", "1.1050", "1.0950", "1.1000"),
+        candle(1,  "1.1000", "1.1100", "1.1000", "1.1050"),
+        candle(2,  "1.1050", "1.1080", "1.0980", "1.1000"),
+        candle(3,  "1.1000", "1.1010", "1.0800", "1.0850"),
+        candle(4,  "1.0850", "1.0880", "1.0820", "1.0830"),
+        candle(5,  "1.0830", "1.0850", "1.0750", "1.0760"),
+        candle(6,  "1.0760", "1.0800", "1.0750", "1.0770"),
+        candle(7,  "1.0670", "1.0700", "1.0650", "1.0680"),
+        candle(8,  "1.0680", "1.0750", "1.0680", "1.0700"),
+        candle(9,  "1.0850", "1.0900", "1.0750", "1.0880"),
+        candle(10, "1.0880", "1.0880", "1.0800", "1.0850"),
+        candle(11, "1.0850", "1.0950", "1.0850", "1.0920"),
+    ]
+    state = engine.evaluate(
+        candles=candles,
+        evaluation_cutoff=candles[-1].timestamp_close,
+    )
+    ts_high = candles[1].timestamp_open
+    ts_low = candles[7].timestamp_open
+
+    phase1_high_events = [
+        e for e in state.structural_events
+        if e == f"SWING_MEANINGFUL_PHASE1:{ts_high.isoformat()}"
+    ]
+    phase1_low_events = [
+        e for e in state.structural_events
+        if e == f"SWING_MEANINGFUL_PHASE1:{ts_low.isoformat()}"
+    ]
+    bootstrap_high_events = [
+        e for e in state.structural_events
+        if e == f"SWING_CONFIRMED_UNRESOLVED:{ts_high.isoformat()}:bootstrap"
+    ]
+    bootstrap_low_events = [
+        e for e in state.structural_events
+        if e == f"SWING_CONFIRMED_UNRESOLVED:{ts_low.isoformat()}:bootstrap"
+    ]
+    assert len(phase1_high_events) == 1, (
+        f"expected exactly one SWING_MEANINGFUL_PHASE1 for HIGH at hour 1; "
+        f"got {phase1_high_events}"
+    )
+    assert len(phase1_low_events) == 1, (
+        f"expected exactly one SWING_MEANINGFUL_PHASE1 for LOW at hour 7; "
+        f"got {phase1_low_events}"
+    )
+    assert len(bootstrap_high_events) == 1, (
+        f"expected exactly one SWING_CONFIRMED_UNRESOLVED:*:bootstrap for HIGH at hour 1; "
+        f"got {bootstrap_high_events}"
+    )
+    assert len(bootstrap_low_events) == 1, (
+        f"expected exactly one SWING_CONFIRMED_UNRESOLVED:*:bootstrap for LOW at hour 7; "
+        f"got {bootstrap_low_events}"
+    )
+
+    records = state.classification_records
+    assert len(records) == 2, (
+        f"expected exactly 2 classification records (one per confirmed swing); "
+        f"got {len(records)}"
+    )
+    for record in records:
+        assert record.is_bootstrap is True, (
+            f"all records should be bootstrap in this fixture; got {record}"
+        )
+        assert record.classification is None, (
+            f"bootstrap records must have classification=None; got {record.classification}"
+        )
+    record_timestamps = {r.swing_timestamp for r in records}
+    assert record_timestamps == {ts_high, ts_low}, (
+        f"expected records for {ts_high} and {ts_low}; got {record_timestamps}"
+    )
+
+
+def test_r40_classification_and_reference_recorded() -> None:
+    # MS-0.1A section 6, invariant 29: when a confirmed swing has a
+    # same-kind reference, the engine records both the classification
+    # (typed via SwingClassification) and the exact reference swing.
+    from trading_system.domain import SwingClassification
+
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),
+        confirmed(4, SwingKind.LOW,  "1.0700"),
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+
+    records_by_ts = {r.swing_timestamp: r for r in result.ledger.classification}
+
+    ts_first_high = swings[0].swing.timestamp
+    ts_first_low = swings[1].swing.timestamp
+    ts_second_high = swings[2].swing.timestamp
+    ts_second_low = swings[3].swing.timestamp
+
+    assert ts_first_high in records_by_ts, "expected record for Phase 1 HIGH"
+    assert records_by_ts[ts_first_high].is_bootstrap is True
+    assert records_by_ts[ts_first_high].classification is None
+
+    assert ts_first_low in records_by_ts, "expected record for Phase 1 LOW"
+    assert records_by_ts[ts_first_low].is_bootstrap is True
+    assert records_by_ts[ts_first_low].classification is None
+
+    assert ts_second_high in records_by_ts, "expected record for second HIGH"
+    assert records_by_ts[ts_second_high].is_bootstrap is False
+    assert records_by_ts[ts_second_high].classification is SwingClassification.HH, (
+        f"second HIGH should be HH vs first HIGH at 1.0800; "
+        f"got {records_by_ts[ts_second_high].classification}"
+    )
+    assert records_by_ts[ts_second_high].reference_timestamp == ts_first_high
+
+    assert ts_second_low in records_by_ts, "expected record for second LOW"
+    assert records_by_ts[ts_second_low].is_bootstrap is False
+    assert records_by_ts[ts_second_low].classification is SwingClassification.HL, (
+        f"second LOW should be HL vs first LOW at 1.0600; "
+        f"got {records_by_ts[ts_second_low].classification}"
+    )
+    assert records_by_ts[ts_second_low].reference_timestamp == ts_first_low
+
+
+def test_r22_partial_classification_records_present() -> None:
+    # MS-0.1A section 5 (partial): structural relationships determine current
+    # active participation. This is a partial test for Round 1: it verifies
+    # classification records exist for non-bootstrap swings, which is a
+    # precondition for Round 2's admission gate. The full R22 invariant
+    # (classification result determines admission) is verified in Round 2.
+    from trading_system.domain import SwingClassification
+
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),
+        confirmed(4, SwingKind.LOW,  "1.0700"),
+        confirmed(5, SwingKind.HIGH, "1.1000"),
+        confirmed(6, SwingKind.LOW,  "1.0800"),
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+
+    bootstrap_records = [r for r in result.ledger.classification if r.is_bootstrap]
+    assert len(bootstrap_records) == 2, (
+        f"expected exactly 2 bootstrap records; got {len(bootstrap_records)}"
+    )
+    for r in bootstrap_records:
+        assert r.classification is None
+
+    non_bootstrap = [r for r in result.ledger.classification if not r.is_bootstrap]
+    assert len(non_bootstrap) == 4, (
+        f"expected 4 non-bootstrap records; got {len(non_bootstrap)}"
+    )
+    for r in non_bootstrap:
+        assert r.classification is not None, (
+            f"non-bootstrap record must have classification; got None for {r.swing_timestamp}"
+        )
+        assert isinstance(r.classification, SwingClassification), (
+            f"classification must be SwingClassification; got {type(r.classification)}"
+        )
