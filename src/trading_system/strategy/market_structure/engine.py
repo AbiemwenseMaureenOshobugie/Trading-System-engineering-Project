@@ -9,10 +9,12 @@ from typing import Sequence
 
 from trading_system.application.ports import H1MarketStructurePort
 from trading_system.domain import (
+    ClassificationRecord,
     MarketCandle,
     MarketStructureState,
     PriceZone,
     Regime,
+    SwingClassification,
     SwingKind,
     SwingPoint,
     Timeframe,
@@ -55,6 +57,28 @@ class _Confirmed:
     def zone(self) -> PriceZone:
         return self.candidate.zone
 
+@dataclass(frozen=True, slots=True)
+class _AdmissionLedger:
+    """Internal immutable ledger of admission outcomes per evaluation.
+
+    Round 1: unresolved and excluded are always empty. Round 2 populates them
+    when the admission gate is enforced. classification is a tuple ordered
+    by swing_timestamp (immutable, per Amendment 02).
+    """
+
+    admitted: tuple[_Confirmed, ...]
+    unresolved: tuple[_Confirmed, ...]
+    excluded: tuple[_Confirmed, ...]
+    classification: tuple[ClassificationRecord, ...]
+    episode_start: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class _AdmissionResult:
+    """Internal return value of _meaningful_swings."""
+
+    ledger: _AdmissionLedger
+    events: tuple[str, ...]
 
 class H1MarketStructureEngine(H1MarketStructurePort):
     """Evaluate the frozen MS-0.1A contract without AI/ML or side effects."""
@@ -78,7 +102,9 @@ class H1MarketStructureEngine(H1MarketStructurePort):
 
         candidates = self._candidates(eligible, events)
         confirmed = self._confirm_candidates(eligible, candidates, events)
-        meaningful = self._meaningful_swings(confirmed, events)
+        admission = self._meaningful_swings(confirmed)
+        events.extend(admission.events)
+        meaningful = list(admission.ledger.admitted)
         labels = self._relationship_labels(meaningful)
         regime, controlling, upper, lower = self._classify(
             eligible, meaningful, labels, events
@@ -86,8 +112,11 @@ class H1MarketStructureEngine(H1MarketStructurePort):
 
         highs = tuple(x.swing for x in meaningful if x.swing.kind is SwingKind.HIGH)
         lows = tuple(x.swing for x in meaningful if x.swing.kind is SwingKind.LOW)
+        confirmed_swings = tuple(x.swing for x in confirmed)
         return self._state(
-            regime, highs, lows, controlling, upper, lower, events, evaluation_cutoff
+            regime, highs, lows, controlling, upper, lower, events, evaluation_cutoff,
+            classification_records=admission.ledger.classification,
+            confirmed_swings=confirmed_swings,
         )
 
     @staticmethod
@@ -167,32 +196,115 @@ class H1MarketStructureEngine(H1MarketStructurePort):
 
         return confirmed
 
-    @staticmethod
     def _meaningful_swings(
-        confirmed: Sequence[_Confirmed], events: list[str]
-    ) -> list[_Confirmed]:
-        """Apply Phase 1 references, then active-chain structural participation."""
-        meaningful: list[_Confirmed] = []
-        first_high = False
-        first_low = False
+        self,
+        confirmed: Sequence[_Confirmed],
+    ) -> _AdmissionResult:
+        """Apply Phase 1 bootstrap and classification recording.
+
+        Round 1: implements Phase 1 bootstrap (per Amendment 05 section A) and
+        records classification + reference for each confirmed swing.
+        Admission gate enforcement (unresolved/excluded states) is Round 2.
+
+        Episode start is always None in Round 1 (single-episode assumption).
+        Round 2 extends this to derive episode start from prior invalidations.
+        """
+        admitted: list[_Confirmed] = []
+        classification_records: list[ClassificationRecord] = []
+        local_events: list[str] = []
+
+        prior_admitted_high: _Confirmed | None = None
+        prior_admitted_low: _Confirmed | None = None
+
         for item in sorted(confirmed, key=lambda x: x.swing.timestamp):
+            ts = item.swing.timestamp
             if item.swing.kind is SwingKind.HIGH:
-                if not first_high:
-                    first_high = True
-                    meaningful.append(item)
-                    events.append(f"SWING_MEANINGFUL_PHASE1:{item.swing.timestamp.isoformat()}")
+                if prior_admitted_high is None:
+                    admitted.append(item)
+                    classification_records.append(
+                        ClassificationRecord(
+                            swing_timestamp=ts,
+                            swing_kind=SwingKind.HIGH,
+                            swing_price=item.swing.price,
+                            classification=None,
+                            reference_timestamp=None,
+                            is_bootstrap=True,
+                        )
+                    )
+                    local_events.append(
+                        f"SWING_MEANINGFUL_PHASE1:{ts.isoformat()}"
+                    )
+                    local_events.append(
+                        f"SWING_CONFIRMED_UNRESOLVED:{ts.isoformat()}:bootstrap"
+                    )
                 else:
-                    meaningful.append(item)
-                    events.append(f"SWING_MEANINGFUL:{item.swing.timestamp.isoformat()}")
+                    if self._overlap(item.zone, prior_admitted_high.zone):
+                        label = SwingClassification.EQ_HIGH
+                    elif item.swing.price > prior_admitted_high.swing.price:
+                        label = SwingClassification.HH
+                    else:
+                        label = SwingClassification.LH
+                    classification_records.append(
+                        ClassificationRecord(
+                            swing_timestamp=ts,
+                            swing_kind=SwingKind.HIGH,
+                            swing_price=item.swing.price,
+                            classification=label,
+                            reference_timestamp=prior_admitted_high.swing.timestamp,
+                            is_bootstrap=False,
+                        )
+                    )
+                    admitted.append(item)
+                    local_events.append(f"SWING_MEANINGFUL:{ts.isoformat()}")
+                prior_admitted_high = item
             else:
-                if not first_low:
-                    first_low = True
-                    meaningful.append(item)
-                    events.append(f"SWING_MEANINGFUL_PHASE1:{item.swing.timestamp.isoformat()}")
+                if prior_admitted_low is None:
+                    admitted.append(item)
+                    classification_records.append(
+                        ClassificationRecord(
+                            swing_timestamp=ts,
+                            swing_kind=SwingKind.LOW,
+                            swing_price=item.swing.price,
+                            classification=None,
+                            reference_timestamp=None,
+                            is_bootstrap=True,
+                        )
+                    )
+                    local_events.append(
+                        f"SWING_MEANINGFUL_PHASE1:{ts.isoformat()}"
+                    )
+                    local_events.append(
+                        f"SWING_CONFIRMED_UNRESOLVED:{ts.isoformat()}:bootstrap"
+                    )
                 else:
-                    meaningful.append(item)
-                    events.append(f"SWING_MEANINGFUL:{item.swing.timestamp.isoformat()}")
-        return meaningful
+                    if self._overlap(item.zone, prior_admitted_low.zone):
+                        label = SwingClassification.EQ_LOW
+                    elif item.swing.price > prior_admitted_low.swing.price:
+                        label = SwingClassification.HL
+                    else:
+                        label = SwingClassification.LL
+                    classification_records.append(
+                        ClassificationRecord(
+                            swing_timestamp=ts,
+                            swing_kind=SwingKind.LOW,
+                            swing_price=item.swing.price,
+                            classification=label,
+                            reference_timestamp=prior_admitted_low.swing.timestamp,
+                            is_bootstrap=False,
+                        )
+                    )
+                    admitted.append(item)
+                    local_events.append(f"SWING_MEANINGFUL:{ts.isoformat()}")
+                prior_admitted_low = item
+
+        ledger = _AdmissionLedger(
+            admitted=tuple(admitted),
+            unresolved=(),
+            excluded=(),
+            classification=tuple(classification_records),
+            episode_start=None,
+        )
+        return _AdmissionResult(ledger=ledger, events=tuple(local_events))
 
     @staticmethod
     def _overlap(a: PriceZone, b: PriceZone) -> bool:
@@ -424,6 +536,8 @@ class H1MarketStructureEngine(H1MarketStructurePort):
         lower: PriceZone | None,
         events: Sequence[str],
         evaluated_at: datetime,
+        classification_records: tuple[ClassificationRecord, ...] = (),
+        confirmed_swings: tuple[SwingPoint, ...] = (),
     ) -> MarketStructureState:
         return MarketStructureState(
             regime=regime,
@@ -435,6 +549,8 @@ class H1MarketStructureEngine(H1MarketStructurePort):
             range_lower_boundary=lower,
             structural_events=tuple(events),
             evaluated_at=evaluated_at,
+            classification_records=classification_records,
+            confirmed_swings=confirmed_swings,
         )
 
 

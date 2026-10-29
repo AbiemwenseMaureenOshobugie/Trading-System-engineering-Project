@@ -16,10 +16,10 @@ from .observation import (
     ObservationStatus,
 )
 from .models import (
-    AIObservation, AuditRecord, BrokerEvidence, BrokerOrderRequest, BrokerOrderSnapshot, BrokerSubmissionResult, BrokerDiscoveryRequest, BrokerDiscoveryResult, BrokerPositionSnapshot, BrokerPositionSyncResult, ConfirmationSequence, DecisionCandidate, DecisionRequest,
+    AIObservation, AuditRecord, BrokerEvidence, BrokerOrderRequest, BrokerOrderSnapshot, BrokerSubmissionResult, BrokerDiscoveryRequest, BrokerDiscoveryResult, BrokerPositionSnapshot, BrokerPositionSyncResult, ClassificationRecord, ConfirmationSequence, DecisionCandidate, DecisionRequest,
     DecisionResult, ExecutionRecord, GoverningKeyLevelRequest, GoverningKeyLevelResult, ExitExecutionRecord, ExitInstruction, ExitPaperFill, GovernanceRequest, GovernanceResult, Position,
     KeyLevel, LiveExecutionAuthorization, LiveExecutionRecord, MarketCandle, MarketStructureState, PaperFill, PaperOrder,
-    PriceZone, RiskRequest, RiskResult, SwingPoint,
+    PriceZone, RiskRequest, RiskResult, SwingClassification, SwingPoint,
 )
 from .performance import PerformanceSnapshot
 from .qualification import QualificationContextResult
@@ -39,11 +39,11 @@ __all__ = [
     "ObservationReason",
     "ObservationResult",
     "ObservationRevision",
-    "ObservationStatus", "ConfirmationSequence", "ConfirmationType",
+    "ObservationStatus", "ClassificationRecord", "ConfirmationSequence", "ConfirmationType",
     "DecisionCandidate", "DecisionRequest", "DecisionResult", "DecisionStatus",
     "Direction", "ExecutionRecord", "ExecutionState", "ExitExecutionRecord", "ExitExecutionState", "ExitInstruction", "ExitPaperFill", "ExitType", "GovernanceRequest",
     "GovernanceResult", "GovernanceStatus", "GoverningKeyLevelRequest", "GoverningKeyLevelResult", "GoverningKeyLevelStatus", "KeyLevel", "KeyLevelSource",
     "MarketCandle", "MarketStructureState", "PaperFill", "PaperOrder",
     "PerformanceSnapshot", "Position", "QualificationContextResult", "QualificationContextStatus", "PriceZone", "Regime", "RiskRequest", "RiskResult",
-    "RiskStatus", "SwingKind", "SwingPoint", "Timeframe", "TradeJournalEntry",
+    "RiskStatus","SwingClassification", "SwingKind", "SwingPoint", "Timeframe", "TradeJournalEntry",
 ]

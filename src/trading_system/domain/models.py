@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
+from enum import Enum
 
 from .enums import (
     AIObservationConsumer,
@@ -82,6 +83,36 @@ class PriceZone:
             raise ValueError("zone lower bound must not exceed upper bound")
 
 
+class SwingClassification(str, Enum):
+    """Typed structural classification label for a confirmed swing."""
+
+    HH = "HH"
+    LH = "LH"
+    HL = "HL"
+    LL = "LL"
+    EQ_HIGH = "EQ_HIGH"
+    EQ_LOW = "EQ_LOW"
+
+
+@dataclass(frozen=True, slots=True)
+class ClassificationRecord:
+    """Per-swing structural classification, immutable once established.
+
+    Per MS-0.1A section 6 and invariants 29-31:
+      - If a same-kind reference exists at confirmation, classification and
+        reference are recorded and immutable.
+      - If no reference exists (Phase 1 bootstrap), classification is None
+        and is_bootstrap is True; the classification is permanent within
+        the episode per Amendment 05 section A.
+    """
+
+    swing_timestamp: datetime
+    swing_kind: SwingKind
+    swing_price: Decimal
+    classification: Optional[SwingClassification]
+    reference_timestamp: Optional[datetime]
+    is_bootstrap: bool
+
 @dataclass(frozen=True, slots=True)
 class MarketStructureState:
     """Snapshot of the H1 structural classification and its evidence."""
@@ -95,6 +126,8 @@ class MarketStructureState:
     range_lower_boundary: Optional[PriceZone]
     structural_events: tuple[str, ...]
     evaluated_at: datetime
+    classification_records: tuple[ClassificationRecord, ...] = ()
+    confirmed_swings: tuple[SwingPoint, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
