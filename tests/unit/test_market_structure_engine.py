@@ -964,3 +964,39 @@ def test_r2a_unresolved_not_in_meaningful_highs_or_lows() -> None:
     rec = _record_map(result)[ts_candidate]
     assert rec.classification is SwingClassification.LH
     assert rec.supporting_opposite_swing is not None
+
+def test_r2a_narrow_exclusion_emits_event() -> None:
+    # Amendment 07 section C4: (LL, HH) -> excluded (narrow exclusion pair),
+    # emitting SWING_EXCLUDED:<ts>:non_extending_incompatible.
+    # Round 2A implements the exclusion event; the excluded_swings state
+    # field is added in Round 2B.
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),  # bootstrap HIGH
+        confirmed(2, SwingKind.LOW,  "1.0600"),  # bootstrap LOW
+        confirmed(3, SwingKind.HIGH, "1.0900"),  # HH, admitted
+        confirmed(4, SwingKind.LOW,  "1.0400"),  # LL vs 1.0600, support HH -> excluded
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+    ts_candidate = swings[3].swing.timestamp
+    admitted_ts = {x.swing.timestamp for x in result.ledger.admitted}
+    assert ts_candidate not in admitted_ts, (
+        f"(LL, HH) should be excluded, not admitted; admitted={admitted_ts}"
+    )
+    excluded_events = [
+        e for e in result.events
+        if e == f"SWING_EXCLUDED:{ts_candidate.isoformat()}:non_extending_incompatible"
+    ]
+    assert len(excluded_events) == 1, (
+        f"expected exactly one :non_extending_incompatible event; "
+        f"got {result.events}"
+    )
+    # Classification record must exist with supporting_opposite_swing recorded
+    records_by_ts = {r.swing_timestamp: r for r in result.ledger.classification}
+    assert ts_candidate in records_by_ts
+    rec = records_by_ts[ts_candidate]
+    assert rec.classification is SwingClassification.LL
+    assert rec.supporting_opposite_swing == swings[2].swing, (
+        f"excluded candidate must record supporting opposite swing; "
+        f"got {rec.supporting_opposite_swing}"
+    )
