@@ -200,108 +200,197 @@ class H1MarketStructureEngine(H1MarketStructurePort):
         self,
         confirmed: Sequence[_Confirmed],
     ) -> _AdmissionResult:
-        """Apply Phase 1 bootstrap and classification recording.
+        """Apply the admission gate per Amendment 07.
 
-        Round 1: implements Phase 1 bootstrap (per Amendment 05 section A) and
-        records classification + reference for each confirmed swing.
-        Admission gate enforcement (unresolved/excluded states) is Round 2.
+        Round 2A: implements supporting-swing selection, the bootstrap-support
+        exception, directional admission, narrow exclusion (event only; the
+        excluded_swings state field is Round 2B), and unresolved classification
+        with reason codes.
 
-        Episode start is always None in Round 1 (single-episode assumption).
-        Round 2 extends this to derive episode start from prior invalidations.
+        Single-episode semantics: no invalidation-boundary derivation in
+        Round 2A. Multi-episode is Round 2B.
         """
         admitted: list[_Confirmed] = []
-        classification_records: list[ClassificationRecord] = []
+        unresolved: list[_Confirmed] = []
+        excluded: list[_Confirmed] = []
+        classification_by_ts: dict[datetime, ClassificationRecord] = {}
         local_events: list[str] = []
 
         prior_admitted_high: _Confirmed | None = None
         prior_admitted_low: _Confirmed | None = None
 
+        def admitted_same_kind(kind: SwingKind) -> _Confirmed | None:
+            return prior_admitted_high if kind is SwingKind.HIGH else prior_admitted_low
+
+        def admitted_opposite_kind(kind: SwingKind) -> list[_Confirmed]:
+            return [x for x in admitted if x.swing.kind is not kind]
+
+        def classify_against(swing: _Confirmed, reference: _Confirmed) -> SwingClassification:
+            if swing.swing.kind is SwingKind.HIGH:
+                if self._overlap(swing.zone, reference.zone):
+                    return SwingClassification.EQ_HIGH
+                return (
+                    SwingClassification.HH
+                    if swing.swing.price > reference.swing.price
+                    else SwingClassification.LH
+                )
+            else:
+                if self._overlap(swing.zone, reference.zone):
+                    return SwingClassification.EQ_LOW
+                return (
+                    SwingClassification.HL
+                    if swing.swing.price > reference.swing.price
+                    else SwingClassification.LL
+                )
+
+        def supporting_classification(
+            supporting: _Confirmed,
+        ) -> SwingClassification | None:
+            rec = classification_by_ts.get(supporting.swing.timestamp)
+            return rec.classification if rec is not None else None
+
         for item in sorted(confirmed, key=lambda x: x.swing.timestamp):
             ts = item.swing.timestamp
-            if item.swing.kind is SwingKind.HIGH:
-                if prior_admitted_high is None:
-                    admitted.append(item)
-                    classification_records.append(
-                        ClassificationRecord(
-                            swing_timestamp=ts,
-                            swing_kind=SwingKind.HIGH,
-                            swing_price=item.swing.price,
-                            classification=None,
-                            reference_timestamp=None,
-                            is_bootstrap=True,
-                        )
-                    )
-                    local_events.append(
-                        f"SWING_MEANINGFUL_PHASE1:{ts.isoformat()}"
-                    )
-                    local_events.append(
-                        f"SWING_CONFIRMED_UNRESOLVED:{ts.isoformat()}:bootstrap"
-                    )
+            ref = admitted_same_kind(item.swing.kind)
+
+            # Phase 1 bootstrap: no prior admitted same-kind swing in this
+            # episode. Admitted unconditionally with CLASSIFICATION_UNRESOLVED.
+            if ref is None:
+                admitted.append(item)
+                classification_by_ts[ts] = ClassificationRecord(
+                    swing_timestamp=ts,
+                    swing_kind=item.swing.kind,
+                    swing_price=item.swing.price,
+                    classification=None,
+                    reference_timestamp=None,
+                    is_bootstrap=True,
+                    supporting_opposite_swing=None,
+                )
+                local_events.append(f"SWING_MEANINGFUL_PHASE1:{ts.isoformat()}")
+                if item.swing.kind is SwingKind.HIGH:
+                    prior_admitted_high = item
                 else:
-                    if self._overlap(item.zone, prior_admitted_high.zone):
-                        label = SwingClassification.EQ_HIGH
-                    elif item.swing.price > prior_admitted_high.swing.price:
-                        label = SwingClassification.HH
-                    else:
-                        label = SwingClassification.LH
-                    classification_records.append(
-                        ClassificationRecord(
-                            swing_timestamp=ts,
-                            swing_kind=SwingKind.HIGH,
-                            swing_price=item.swing.price,
-                            classification=label,
-                            reference_timestamp=prior_admitted_high.swing.timestamp,
-                            is_bootstrap=False,
-                        )
-                    )
+                    prior_admitted_low = item
+                continue
+
+            # Non-bootstrap: classify against same-kind reference.
+            candidate_class = classify_against(item, ref)
+
+            # Select supporting opposite-kind swing: most recent admitted
+            # opposite-kind swing whose timestamp is strictly between
+            # ref.timestamp and ts.
+            candidates_for_support = [
+                x for x in admitted_opposite_kind(item.swing.kind)
+                if ref.swing.timestamp < x.swing.timestamp < ts
+            ]
+            supporting: _Confirmed | None = None
+            if candidates_for_support:
+                supporting = max(candidates_for_support, key=lambda x: x.swing.timestamp)
+
+            # No supporting swing -> unresolved U1.
+            if supporting is None:
+                classification_by_ts[ts] = ClassificationRecord(
+                    swing_timestamp=ts,
+                    swing_kind=item.swing.kind,
+                    swing_price=item.swing.price,
+                    classification=candidate_class,
+                    reference_timestamp=ref.swing.timestamp,
+                    is_bootstrap=False,
+                    supporting_opposite_swing=None,
+                )
+                unresolved.append(item)
+                local_events.append(
+                    f"SWING_CONFIRMED_UNRESOLVED:{ts.isoformat()}:incomplete"
+                )
+                continue
+
+            # Record the supporting swing in classification.
+            classification_by_ts[ts] = ClassificationRecord(
+                swing_timestamp=ts,
+                swing_kind=item.swing.kind,
+                swing_price=item.swing.price,
+                classification=candidate_class,
+                reference_timestamp=ref.swing.timestamp,
+                is_bootstrap=False,
+                supporting_opposite_swing=supporting.swing,
+            )
+            local_events.append(
+                f"SUPPORTING_OPPOSITE_SELECTED:{ts.isoformat()}:{supporting.swing.timestamp.isoformat()}"
+            )
+
+            support_class = supporting_classification(supporting)
+
+            # Bootstrap-support exception (§C1).
+            if support_class is None:
+                if candidate_class in (
+                    SwingClassification.HH,
+                    SwingClassification.LH,
+                    SwingClassification.HL,
+                    SwingClassification.LL,
+                ):
                     admitted.append(item)
                     local_events.append(f"SWING_MEANINGFUL:{ts.isoformat()}")
-                prior_admitted_high = item
+                    if item.swing.kind is SwingKind.HIGH:
+                        prior_admitted_high = item
+                    else:
+                        prior_admitted_low = item
+                else:
+                    # EQ candidate under bootstrap support -> U2a.
+                    unresolved.append(item)
+                    local_events.append(
+                        f"SWING_CONFIRMED_UNRESOLVED:{ts.isoformat()}:bootstrap_equality"
+                    )
+                continue
+
+            # Classified support: apply EQ rule (§C2), directional admission
+            # (§C3), narrow exclusion (§C4), non-extending (§C5).
+            if candidate_class in (
+                SwingClassification.EQ_HIGH,
+                SwingClassification.EQ_LOW,
+            ) or support_class in (
+                SwingClassification.EQ_HIGH,
+                SwingClassification.EQ_LOW,
+            ):
+                unresolved.append(item)
+                local_events.append(
+                    f"SWING_CONFIRMED_UNRESOLVED:{ts.isoformat()}:eq_classified"
+                )
+                continue
+
+            pair = (candidate_class, support_class)
+            if pair in (
+                (SwingClassification.HH, SwingClassification.HL),
+                (SwingClassification.LH, SwingClassification.LL),
+                (SwingClassification.HL, SwingClassification.HH),
+                (SwingClassification.LL, SwingClassification.LH),
+            ):
+                admitted.append(item)
+                local_events.append(f"SWING_MEANINGFUL:{ts.isoformat()}")
+                if item.swing.kind is SwingKind.HIGH:
+                    prior_admitted_high = item
+                else:
+                    prior_admitted_low = item
+            elif pair in (
+                (SwingClassification.HH, SwingClassification.LL),
+                (SwingClassification.LL, SwingClassification.HH),
+            ):
+                excluded.append(item)
+                local_events.append(
+                    f"SWING_EXCLUDED:{ts.isoformat()}:non_extending_incompatible"
+                )
             else:
-                if prior_admitted_low is None:
-                    admitted.append(item)
-                    classification_records.append(
-                        ClassificationRecord(
-                            swing_timestamp=ts,
-                            swing_kind=SwingKind.LOW,
-                            swing_price=item.swing.price,
-                            classification=None,
-                            reference_timestamp=None,
-                            is_bootstrap=True,
-                        )
-                    )
-                    local_events.append(
-                        f"SWING_MEANINGFUL_PHASE1:{ts.isoformat()}"
-                    )
-                    local_events.append(
-                        f"SWING_CONFIRMED_UNRESOLVED:{ts.isoformat()}:bootstrap"
-                    )
-                else:
-                    if self._overlap(item.zone, prior_admitted_low.zone):
-                        label = SwingClassification.EQ_LOW
-                    elif item.swing.price > prior_admitted_low.swing.price:
-                        label = SwingClassification.HL
-                    else:
-                        label = SwingClassification.LL
-                    classification_records.append(
-                        ClassificationRecord(
-                            swing_timestamp=ts,
-                            swing_kind=SwingKind.LOW,
-                            swing_price=item.swing.price,
-                            classification=label,
-                            reference_timestamp=prior_admitted_low.swing.timestamp,
-                            is_bootstrap=False,
-                        )
-                    )
-                    admitted.append(item)
-                    local_events.append(f"SWING_MEANINGFUL:{ts.isoformat()}")
-                prior_admitted_low = item
+                unresolved.append(item)
+                local_events.append(
+                    f"SWING_CONFIRMED_UNRESOLVED:{ts.isoformat()}:conflict"
+                )
 
         ledger = _AdmissionLedger(
             admitted=tuple(admitted),
-            unresolved=(),
-            excluded=(),
-            classification=tuple(classification_records),
+            unresolved=tuple(unresolved),
+            excluded=tuple(excluded),
+            classification=tuple(
+                sorted(classification_by_ts.values(), key=lambda r: r.swing_timestamp)
+            ),
             episode_start=None,
         )
         return _AdmissionResult(ledger=ledger, events=tuple(local_events))

@@ -112,6 +112,7 @@ class ClassificationRecord:
     classification: Optional[SwingClassification]
     reference_timestamp: Optional[datetime]
     is_bootstrap: bool
+    supporting_opposite_swing: Optional[SwingPoint] = None
 
 @dataclass(frozen=True, slots=True)
 class MarketStructureState:
