@@ -3,7 +3,14 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from trading_system.domain import MarketCandle, PriceZone, Regime, SwingKind, Timeframe
+from trading_system.domain import (
+    MarketCandle,
+    PriceZone,
+    Regime,
+    SwingClassification,
+    SwingKind,
+    Timeframe,
+)
 from trading_system.strategy.market_structure import H1MarketStructureEngine
 from trading_system.strategy.market_structure.engine import _Candidate, _Confirmed
 
@@ -692,3 +699,268 @@ def test_r22_partial_classification_records_present() -> None:
         assert isinstance(r.classification, SwingClassification), (
             f"classification must be SwingClassification; got {type(r.classification)}"
         )
+
+# --- Phase B Round 2A: admission gate tests ---
+
+
+def _record_map(result):
+    """Helper: classification records keyed by swing_timestamp."""
+    return {r.swing_timestamp: r for r in result.ledger.classification}
+
+
+def test_r2a_bootstrap_support_admits_first_hh() -> None:
+    # Amendment 07 section C1: bootstrap support + HH candidate -> admitted.
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+    ts_candidate = swings[2].swing.timestamp
+    records = _record_map(result)
+    assert ts_candidate in records
+    rec = records[ts_candidate]
+    assert rec.classification is SwingClassification.HH
+    assert rec.is_bootstrap is False
+    assert rec.supporting_opposite_swing is not None, (
+        f"Round 2A must record supporting_opposite_swing; got None"
+    )
+    assert rec.supporting_opposite_swing == swings[1].swing, (
+        f"supporting swing should be bootstrap LOW; got {rec.supporting_opposite_swing}"
+    )
+    admitted_ts = {x.swing.timestamp for x in result.ledger.admitted}
+    assert ts_candidate in admitted_ts
+
+
+def test_r2a_bootstrap_support_admits_first_lh() -> None:
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0750"),
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+    ts_candidate = swings[2].swing.timestamp
+    rec = _record_map(result)[ts_candidate]
+    assert rec.classification is SwingClassification.LH
+    assert rec.supporting_opposite_swing == swings[1].swing
+    assert ts_candidate in {x.swing.timestamp for x in result.ledger.admitted}
+
+
+def test_r2a_bootstrap_support_admits_first_hl() -> None:
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.LOW,  "1.0700"),
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+    ts_candidate = swings[2].swing.timestamp
+    rec = _record_map(result)[ts_candidate]
+    assert rec.classification is SwingClassification.HL
+    assert rec.supporting_opposite_swing == swings[0].swing
+    assert ts_candidate in {x.swing.timestamp for x in result.ledger.admitted}
+
+
+def test_r2a_bootstrap_support_admits_first_ll() -> None:
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.LOW,  "1.0500"),
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+    ts_candidate = swings[2].swing.timestamp
+    rec = _record_map(result)[ts_candidate]
+    assert rec.classification is SwingClassification.LL
+    assert rec.supporting_opposite_swing == swings[0].swing
+    assert ts_candidate in {x.swing.timestamp for x in result.ledger.admitted}
+
+
+def test_r2a_bootstrap_support_plus_eq_remains_unresolved() -> None:
+    # Amendment 07 D/U2a: EQ candidate under bootstrap support -> unresolved.
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0800"),  # EQ_HIGH
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+    ts_candidate = swings[2].swing.timestamp
+    rec = _record_map(result)[ts_candidate]
+    # EQ candidate: supporting swing is still selected (the bootstrap LOW)
+    # per Amendment 07 G2: "For an unresolved candidate with a selected
+    # support, it identifies that support."
+    assert rec.supporting_opposite_swing is not None, (
+        "EQ candidate should still have a selected supporting swing recorded"
+    )
+    assert rec.supporting_opposite_swing == swings[1].swing
+    admitted_ts = {x.swing.timestamp for x in result.ledger.admitted}
+    assert ts_candidate not in admitted_ts
+    unresolved = [
+        e for e in result.events
+        if e == f"SWING_CONFIRMED_UNRESOLVED:{ts_candidate.isoformat()}:bootstrap_equality"
+    ]
+    assert len(unresolved) == 1, (
+        f"expected exactly one :bootstrap_equality event; got {result.events}"
+    )
+
+
+def _round2a_admitted_pair_fixture(candidate_kind, candidate_price):
+    """Bootstrap HIGH 1.0800, bootstrap LOW 1.0600, admitted HH HIGH 1.0900, candidate."""
+    return [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),  # HH, admitted via bootstrap
+        confirmed(4, candidate_kind, candidate_price),
+    ]
+
+
+def test_r2a_classified_support_admits_hl_vs_hh() -> None:
+    # Amendment 07 C3: (HL, HH) -> admitted.
+    engine = H1MarketStructureEngine()
+    swings = _round2a_admitted_pair_fixture(SwingKind.LOW, "1.0700")
+    result = engine._meaningful_swings(confirmed=swings)
+    ts_candidate = swings[3].swing.timestamp
+    rec = _record_map(result)[ts_candidate]
+    assert rec.classification is SwingClassification.HL
+    assert rec.supporting_opposite_swing == swings[2].swing, (
+        f"supporting should be admitted HH HIGH; got {rec.supporting_opposite_swing}"
+    )
+    assert ts_candidate in {x.swing.timestamp for x in result.ledger.admitted}
+
+
+def test_r2a_classified_support_admits_ll_vs_lh() -> None:
+    # Amendment 07 C3: (LL, LH) -> admitted.
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0750"),  # LH, admitted via bootstrap
+        confirmed(4, SwingKind.LOW,  "1.0500"),  # LL
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+    ts_candidate = swings[3].swing.timestamp
+    rec = _record_map(result)[ts_candidate]
+    assert rec.classification is SwingClassification.LL
+    assert rec.supporting_opposite_swing == swings[2].swing
+    assert ts_candidate in {x.swing.timestamp for x in result.ledger.admitted}
+
+
+def test_r2a_classified_support_admits_hh_vs_hl() -> None:
+    # Amendment 07 C3: (HH, HL) -> admitted.
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.LOW,  "1.0700"),  # HL, admitted via bootstrap
+        confirmed(4, SwingKind.HIGH, "1.0900"),  # HH
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+    ts_candidate = swings[3].swing.timestamp
+    rec = _record_map(result)[ts_candidate]
+    assert rec.classification is SwingClassification.HH
+    assert rec.supporting_opposite_swing == swings[2].swing
+    assert ts_candidate in {x.swing.timestamp for x in result.ledger.admitted}
+
+
+def test_r2a_classified_support_admits_lh_vs_ll() -> None:
+    # Amendment 07 C3: (LH, LL) -> admitted.
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.LOW,  "1.0500"),  # LL, admitted via bootstrap
+        confirmed(4, SwingKind.HIGH, "1.0750"),  # LH
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+    ts_candidate = swings[3].swing.timestamp
+    rec = _record_map(result)[ts_candidate]
+    assert rec.classification is SwingClassification.LH
+    assert rec.supporting_opposite_swing == swings[2].swing
+    assert ts_candidate in {x.swing.timestamp for x in result.ledger.admitted}
+
+
+def test_r2a_classified_support_nonextending_remains_unresolved() -> None:
+    # Amendment 07 D/U3: (LH, HL) -> unresolved (:conflict).
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.LOW,  "1.0700"),  # HL, admitted
+        confirmed(4, SwingKind.HIGH, "1.0750"),  # LH (below 1.0800)
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+    ts_candidate = swings[3].swing.timestamp
+    rec = _record_map(result)[ts_candidate]
+    assert rec.classification is SwingClassification.LH
+    assert rec.supporting_opposite_swing == swings[2].swing, (
+        "unresolved candidate with selected support must record the support"
+    )
+    admitted_ts = {x.swing.timestamp for x in result.ledger.admitted}
+    assert ts_candidate not in admitted_ts
+    unresolved = [
+        e for e in result.events
+        if e == f"SWING_CONFIRMED_UNRESOLVED:{ts_candidate.isoformat()}:conflict"
+    ]
+    assert len(unresolved) == 1, (
+        f"expected exactly one :conflict event; got {result.events}"
+    )
+
+
+def test_r2a_classified_support_eq_pair_remains_unresolved() -> None:
+    # Amendment 07 D/U2: EQ under classified support -> unresolved (:eq_classified).
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.HIGH, "1.0900"),  # HH, admitted
+        confirmed(4, SwingKind.LOW,  "1.0600"),  # EQ_LOW
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+    ts_candidate = swings[3].swing.timestamp
+    rec = _record_map(result)[ts_candidate]
+    assert rec.classification is SwingClassification.EQ_LOW
+    assert rec.supporting_opposite_swing == swings[2].swing
+    admitted_ts = {x.swing.timestamp for x in result.ledger.admitted}
+    assert ts_candidate not in admitted_ts
+    unresolved = [
+        e for e in result.events
+        if e == f"SWING_CONFIRMED_UNRESOLVED:{ts_candidate.isoformat()}:eq_classified"
+    ]
+    assert len(unresolved) == 1, (
+        f"expected exactly one :eq_classified event; got {result.events}"
+    )
+
+
+def test_r2a_no_intervening_support_remains_unresolved() -> None:
+    # Amendment 07 D/U1: no eligible intervening opposite-kind swing exists.
+    # Not constructible via _meaningful_swings(confirmed) with standard
+    # bootstrap (which always produces both kinds). Round 2B multi-episode
+    # tests may cover this case differently.
+    import pytest
+    pytest.skip(
+        "U1 requires no opposite-kind in the intervening interval; "
+        "not constructible with the standard bootstrap fixture. "
+        "Round 2B multi-episode tests may cover this case."
+    )
+
+
+def test_r2a_unresolved_not_in_meaningful_highs_or_lows() -> None:
+    # Amendment 07 D: unresolved swing is not in meaningful_highs/lows.
+    engine = H1MarketStructureEngine()
+    swings = [
+        confirmed(1, SwingKind.HIGH, "1.0800"),
+        confirmed(2, SwingKind.LOW,  "1.0600"),
+        confirmed(3, SwingKind.LOW,  "1.0700"),
+        confirmed(4, SwingKind.HIGH, "1.0750"),  # LH, non-extending -> unresolved
+    ]
+    result = engine._meaningful_swings(confirmed=swings)
+    admitted_ts = {x.swing.timestamp for x in result.ledger.admitted}
+    ts_candidate = swings[3].swing.timestamp
+    assert ts_candidate not in admitted_ts
+    # classification record exists; supporting_opposite_swing recorded
+    rec = _record_map(result)[ts_candidate]
+    assert rec.classification is SwingClassification.LH
+    assert rec.supporting_opposite_swing is not None
