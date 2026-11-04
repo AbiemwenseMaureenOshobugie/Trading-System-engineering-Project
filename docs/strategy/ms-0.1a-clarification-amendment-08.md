@@ -1,4 +1,4 @@
-﻿# MS-0.1A Clarification Amendment 08 — Chronological Episode Replay and Invalidation Ordering
+# MS-0.1A Clarification Amendment 08 — Chronological Episode Replay and Invalidation Ordering
 
 **Status:** Documentation-only clarification. No implementation or test files are changed by this amendment.
 **Canonical target:** `docs/strategy/ms-0.1a-market-structure-spec.md`
