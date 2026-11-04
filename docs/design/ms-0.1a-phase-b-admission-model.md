@@ -245,9 +245,35 @@ Any regression is a Phase B defect that must be addressed before the round compl
 - Whether to validate excluded_swings in MarketStructureState.__post_init__.
 - Whether _meaningful_swings needs eligible at all or whether episode start can be derived from confirmed alone.
 
+## Round 2A known defect — confirmation timestamp ordering
+
+**Recorded:** 2026-11-01.
+**Status:** Known defect, to be corrected in Round 2B under Amendment 08.
+
+The Round 2A implementation does not consistently use `confirmed_at` when ordering confirmed swings and determining episode membership.
+
+Specifically:
+
+- `_meaningful_swings()` sorts confirmed swings using `swing.timestamp`, which is the originating middle candle's opening timestamp.
+- `_classify()` filters episode membership using `swing.timestamp` rather than `confirmed_at`.
+
+This does not conform to Amendment 07 §F3, which defines episode membership using the confirmation timestamp, and it is the defect that Amendment 08 §E makes explicit.
+
+The defect was not detected by the Round 2A test suite because the existing fixtures use the `confirmed()` helper, which produces swings where `timestamp_open` and `confirmed_at` are separated by exactly one hour (the confirmation candle's close). For all Round 2A fixtures, the two orderings coincide, so the defect is invisible.
+
+**Disposition:** Known defect to be corrected in Round 2B under Amendment 08.
+
+Round 2B shall:
+
+1. Correct `_meaningful_swings` and `_classify` to use `confirmed_at` for ordering, admission, classification, and episode membership.
+2. Add test R2B-16: a fixture where `timestamp_open` ordering differs from `confirmed_at` ordering; admission and classification must follow `confirmed_at`.
+3. Verify that all Round 2A tests still pass after the correction. Because Round 2A fixtures have coincident orderings, all Round 2A tests should pass unchanged. Any Round 2A test that fails after the correction indicates either a Round 2A fixture that accidentally encoded the defect or a genuine Round 2B implementation issue, and shall be investigated rather than accommodated.
+
+Round 2A's reported test result (`340 passed, 1 skipped` at commit `b959d0c`) remains valid as a test result. It does not establish full conformance with the confirmation-time ordering requirement of Amendment 07 §F3.
 ## 12. Revision history
 
 - 2026-10-25: Initial draft, based on fresh conformance audit and Amendments 05/06.
 - 2026-10-25: Finalized. Five design decisions accepted, two-round split approved.
 - 2026-10-25: Amendment. ClassificationRecord promoted to public immutable dataclass. MarketStructureState extended with classification_records and confirmed_swings fields for testability and downstream consumers. _AdmissionLedger and _AdmissionResult explicitly remain engine-internal.
 - 2026-10-26: Amendment 02. Immutable ledger (classification as tuple, not dict). SwingClassification enum for typed labels. excluded_swings deferred to Round 2. Round 1 restricted to single-episode semantics. _meaningful_swings signature for Round 1 is `(confirmed)` without unused parameters. R22 test renamed to reflect partial scope.
+- 2026-11-01: Recorded Round 2A confirmed_at ordering defect, to be corrected in Round 2B under Amendment 08.
